@@ -33,4 +33,7 @@ int main(int argc, char** argv) {
 
 	load_bios(bios_path);
 	load_rom(rom_path);
+	mem_dump();
+
+	return 0;
 }

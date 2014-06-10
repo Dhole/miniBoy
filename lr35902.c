@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include "memory.h"
 
 static uint16_t SP, PC;
 static uint16_t AF, BC, DE, HL;
@@ -18,3 +19,7 @@ int main() {
 	return 0;
 }
 */
+
+void cpu_init() {
+	PC = 0;
+}

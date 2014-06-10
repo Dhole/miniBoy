@@ -4,7 +4,7 @@
 #include "lr35902.h"
 #include "memory.h"
 
-#define MAX_BIOS_SIZE 256
+#define MAX_BIOS_SIZE 0x100
 #define MAX_ROM_SIZE 0x400000
 
 static uint8_t bios[256];
@@ -47,10 +47,14 @@ void load_rom(char *rom_path) {
 	fseek(fr, 0, SEEK_SET);
 	rom = malloc(size);
 	fread(rom, 1, size, fr);
-	mem_load(0x100, rom, 0x4000 - 0x100);
+	mem_load(0x100, &rom[0x100], 0x4000 - 0x100);
 	fclose(fr);
 }
 
 void unload_rom() {
 	free(rom);
+}
+
+void init() {
+	cpu_init();
 }
