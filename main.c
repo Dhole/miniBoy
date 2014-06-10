@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "dmg.h"
 
 void usage(char *argv0) {
 	printf("Usage: %s [-v] [-b bios] rom\n", argv0);
@@ -8,7 +9,6 @@ void usage(char *argv0) {
 }
 
 int main(int argc, char** argv) {
-
 	int opt;
 	int v_flag = 0;
 	char *bios_path = NULL;
@@ -31,5 +31,6 @@ int main(int argc, char** argv) {
 	}
 	rom_path = argv[optind];
 
-	//printf("Verbose: %i, Bios: %s, Rom: %s\n", v_flag, bios_path, rom_path);
+	load_bios(bios_path);
+	load_rom(rom_path);
 }

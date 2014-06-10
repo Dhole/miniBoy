@@ -8,6 +8,7 @@ static uint8_t *F = (uint8_t*)&AF, *A = (uint8_t*)&AF + 1,
 	*E = (uint8_t*)&DE, *D = (uint8_t*)&DE + 1,
 	*L = (uint8_t*)&HL, *H = (uint8_t*)&HL + 1;
 
+/*
 int main() {
 	AF = 256;
 	printf("AF: %i\n", AF);
@@ -16,4 +17,4 @@ int main() {
 	printf("0: %i, 1: %i, 01: %i\n", read_8(0), read_8(1), read_16(0));
 	return 0;
 }
-
+*/
