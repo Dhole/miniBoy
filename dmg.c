@@ -10,7 +10,7 @@
 static uint8_t bios[256];
 static uint8_t *rom;
 
-void load_bios(char *bios_path) {
+void dmg_load_bios(char *bios_path) {
 	int size;
 	FILE *fb;
 	fb = fopen(bios_path, "rb");
@@ -30,7 +30,7 @@ void load_bios(char *bios_path) {
 	fclose(fb);
 }
 
-void load_rom(char *rom_path) {
+void dmg_load_rom(char *rom_path) {
 	int size;
 	FILE *fr;
 	fr = fopen(rom_path, "rb");
@@ -51,10 +51,11 @@ void load_rom(char *rom_path) {
 	fclose(fr);
 }
 
-void unload_rom() {
+void dmg_unload_rom() {
 	free(rom);
 }
 
-void init() {
+void dmg_init() {
 	cpu_init();
+	cpu_test();
 }

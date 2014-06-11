@@ -31,9 +31,10 @@ int main(int argc, char** argv) {
 	}
 	rom_path = argv[optind];
 
-	load_bios(bios_path);
-	load_rom(rom_path);
-	mem_dump();
+	dmg_load_bios(bios_path);
+	dmg_load_rom(rom_path);
+	dmg_init();
+	mem_dump(0, 0x100);
 
 	return 0;
 }

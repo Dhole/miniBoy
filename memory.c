@@ -27,13 +27,13 @@ void mem_load(uint16_t addr, uint8_t *buf, uint16_t size) {
 	memcpy(&mm[addr], buf, size);
 }
 
-void mem_dump() {
+void mem_dump(uint16_t start, uint16_t end) {
 	//unsigned char *buf = (unsigned char*)&memory;
 	int i, j;
-	for (i = 0; i < MEM_SIZE; i += 16) {
-		printf("%08x  ", i);
+	for (i = start; i < end; i += 16) {
+		printf("%04x  ", i);
 		for (j = 0; j < 16; j++) {
-			if (i + j < MEM_SIZE) {
+			if (i + j < end) {
 				printf("%02x ", mm[i+j]);
 			} else {
 				printf("   ");
@@ -44,11 +44,10 @@ void mem_dump() {
 		}
 		printf(" |");
 		for (j = 0; j < 16; j++) {
-			if (i + j < MEM_SIZE) {
+			if (i + j < end) {
 				printf("%c", isprint(mm[i+j]) ? mm[i+j] : '.');
 			}
 		}
 		printf("|\n");
 	}
-	printf("\n");
 }
