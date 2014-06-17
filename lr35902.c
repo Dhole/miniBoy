@@ -25,28 +25,17 @@ typedef enum {
 static uint16_t pc1_val;
 static uint16_t *pc1 = &pc1_val;
 
-//uint8_t cpu_ops_cycles[256];
-//uint8_t cpu_ops_cb_cycles[256];
-
 typedef struct {
 	char *desc;
 	void (*handler)(void*, void*);
 	void *a;
 	void *b;
+	uint8_t length;
 	uint8_t cycles;
 } opcode;
 
 static opcode ops[256];
 
-/*
-void cpu_op_ld_8(uint8_t *dst, uint8_t src) {
-	*dst = src;
-}
-
-void cpu_op_ld_16(uint16_t *dst, uint16_t src) {
-	*dst = src;
-}
-*/
 
 void set_flag(flag_t f, uint8_t v) {
 	if (v) {
@@ -68,13 +57,18 @@ uint8_t get_flag(flag_t f) {
 	return (*F & f) > 0 ? 1 : 0;
 }
 
+void exec_op(uint8_t n) {
+	ops[n].handler(ops[n].a, ops[n].b);
+	PC += ops[op].length;
+}
+
 int cpu_step() {
 	uint8_t op;
 	//uint8_t d8, a8, r8;
 	//uint16_t d16, a16;
 
 	op = mem_read_8(PC);
-	printf("0x%04X : %02X\n", PC, op);
+	printf("0x%04X : %02X -> %s\n", PC, op, ops[op].desc);
 	/*
 	d8 = mem_read_8(PC + 1);
 	a8 = d8 + 0xFF00;
@@ -85,27 +79,10 @@ int cpu_step() {
 	
 	*pc1 = PC + 1;
 
-	OP(op);
+	//OP(op);
+	exec_op(op);
 
 	return ops[op].cycles;
-	
-	/*
-	switch (op) {
-	case 0x76:
-		// HALT
-		return 4;
-		break;
-	}
-	switch (op && 0xF0 >> 4) {
-	case 0x4:
-	case 0x5:
-	case 0x6:
-	case 0x7:
-		return -1;
-		// LD
-		
-	}
-	*/
 }
 
 void cpu_dump_reg() {
@@ -216,9 +193,13 @@ void op_ld_8r_16a_m(void *_a, void *_b) {
 
 void op_ld_16r_sp_8v(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
-	uint8_t *b = (uint8_t*)_b;
-	*HL = *SP + *b;
-	// TODO update flags
+	int8_t *b = (int8_t*)_b;
+	*a = *SP + *b;
+	
+	set_flag(Z_FLAG, 0);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, (*SP > 0xFF - *b) ? 1 : 0);
 }
 
 void op_halt(void *_a, void *_b) {
@@ -232,7 +213,7 @@ void op_add(void *_a, void *_b) {
 
 	set_flag_Z(a);
 	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, (*a & 0x0F < *b & 0x0F) ? 1 : 0);
+	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
 	set_flag(C_FLAG, (*a > 0xFF - *b) ? 1 : 0);
 }
 
@@ -253,8 +234,8 @@ void op_sub(void *_a, void *_b) {
 	*a -= *b;
 
         set_flag_Z(a);
-	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
+	set_flag(N_FLAG, 0);       
+	set_flag(H_FLAG, (*a & 0x0F < *b & 0x0F) ? 1 : 0);
 	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
 }
 
@@ -265,7 +246,7 @@ void op_sbc(void *_a, void *_b) {
 
         set_flag_Z(a);
 	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
+	set_flag(H_FLAG, (*a & 0x0F < *b & 0x0F) ? 1 : 0);
 	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
 }
 
@@ -312,8 +293,104 @@ void op_cp(void *_a, void *_b) {
 	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
 }
 
+void op_inc_8(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	*a++;
+}
+
+void op_inc_16(void *_a, void *_b) {
+	uint16_t *a = (uint16_t*)_a;
+	*a++;
+}
+
+void op_dec_8(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	*a--;
+}
+
+void op_dec_16(void *_a, void *_b) {
+	uint16_t *a = (uint16_t*)_a;
+	*a--;
+}
+
+void op_call(void *_a, void *_b) {
+        // TODO
+}
+
+void op_rla(void *_a, void *_b) {
+        // TODO
+}
+
+void op_reti(void *_a, void *_b) {
+        // TODO
+}
+
+void op_rrca(void *_a, void *_b) {
+        // TODO
+}
+
+void op_ccf(void *_a, void *_b) {
+        // TODO
+}
+
+void op_scf(void *_a, void *_b) {
+        // TODO
+}
+
+void op_rlca(void *_a, void *_b) {
+        // TODO
+}
+
+void op_jp(void *_a, void *_b) {
+        // TODO
+}
+
+void op_di(void *_a, void *_b) {
+        // TODO
+}
+
+void op_push(void *_a, void *_b) {
+        // TODO
+}
+
+void op_cpl(void *_a, void *_b) {
+        // TODO
+}
+
+void op_daa(void *_a, void *_b) {
+        // TODO
+}
+
+void op_pop(void *_a, void *_b) {
+        // TODO
+}
+
+void op_jr(void *_a, void *_b) {
+        // TODO
+}
+
+void op_rra(void *_a, void *_b) {
+        // TODO
+}
+
+void op_ldh(void *_a, void *_b) {
+        // TODO
+}
+
+void op_ei(void *_a, void *_b) {
+        // TODO
+}
+
+void op_rst(void *_a, void *_b) {
+        // TODO
+}
+
 void op_nop(void *_a, void *_b) {
         
+}
+
+void op_undef(void *_a, void *_b) {
+        // TODO
 }
 
 #define SET_OP(i, d, f, _a, _b, c)		\
@@ -359,7 +436,7 @@ void set_opcodes() {
 	SET_OP(0x1F, "RRA", op_nop, NULL, NULL, 0);
 	
 	SET_OP(0x20, "JR NZ,r8", op_nop, NULL, NULL, 0);
-	SET_OP(0x21, "LD HL,16", op_ld_16r_16a, HL, pc1, 12);
+	SET_OP(0x21, "LD HL,d16", op_ld_16r_16a, HL, pc1, 12);
 	SET_OP(0x22, "LD (HL+),A", op_ld_16a_8r_p, HL, A, 8);
 	SET_OP(0x23, "INC HL", op_nop, NULL, NULL, 0);
 	SET_OP(0x24, "INC H", op_nop, NULL, NULL, 0);
@@ -376,7 +453,7 @@ void set_opcodes() {
 	SET_OP(0x2F, "CPL", op_nop, NULL, NULL, 0);
 
 	SET_OP(0x30, "JR NC,r8", op_nop, NULL, NULL, 0);
-	SET_OP(0x31, "LD SP,16", op_ld_16r_16a, SP, pc1, 12);
+	SET_OP(0x31, "LD SP,d16", op_ld_16r_16a, SP, pc1, 12);
 	SET_OP(0x32, "LD (HL-),A", op_ld_16a_8r_m, HL, A, 8);
 	SET_OP(0x33, "INC SP", op_nop, NULL, NULL, 0);
 	SET_OP(0x34, "INC (HL)", op_nop, NULL, NULL, 0);
