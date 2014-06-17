@@ -15,6 +15,13 @@ static uint8_t *F = (uint8_t*)&regs[0], *A = (uint8_t*)&regs[1],
 	*E = (uint8_t*)&regs[4], *D = (uint8_t*)&regs[5],
 	*L = (uint8_t*)&regs[6], *H = (uint8_t*)&regs[7];
 
+typedef enum {
+	Z_FLAG = 1 << 7,
+	N_FLAG = 1 << 6,
+	H_FLAG = 1 << 5,
+	C_FLAG = 1 << 4,
+} flag_t;
+
 static uint16_t pc1_val;
 static uint16_t *pc1 = &pc1_val;
 
@@ -40,6 +47,26 @@ void cpu_op_ld_16(uint16_t *dst, uint16_t src) {
 	*dst = src;
 }
 */
+
+void set_flag(char f, uint8_t v) {
+	if (v) {
+		*F |= f;
+	} else {
+		*F &= ~f;
+	}
+}
+
+void set_flag_Z(uint8_t *a) {
+	if (*a == 0) {
+		set_flag(Z_FLAG, 1);
+	} else {
+		set_flag(Z_FLAG, 0);
+	}	
+}
+
+uint8_t get_flag(flag_t f) {
+	return (*F & f) > 0 ? 1 : 0;
+}
 
 int cpu_step() {
 	uint8_t op;
@@ -195,6 +222,80 @@ void op_ld_16r_sp_8v(void *_a, void *_b) {
 }
 
 void op_halt(void *_a, void *_b) {
+	// TODO
+}
+
+void op_add(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	*a += *b;
+
+	set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, (*a & 0x0F < *b & 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, (*a > 0xFF - *b) ? 1 : 0);
+}
+
+void op_adc(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	*a += *b + get_flag(C_FLAG);
+
+        set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, (*a & 0x0F < *b & 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, (*a > 0xFF - *b) ? 1 : 0);
+}
+
+void op_sub(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	*a -= *b;
+
+        set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
+}
+
+void op_sbc(void *_a, void *_b) {
+	// TODO
+}
+
+void op_and(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	*a &= *b;
+
+        set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, 1);
+	set_flag(C_FLAG, 0);
+}
+
+void op_xor(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	*a ^= *b;
+
+        set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, 0);
+	set_flag(C_FLAG, 0);
+}
+
+void op_or(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	*a |= *b;
+
+        set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, 0);
+	set_flag(C_FLAG, 0);
+}
+
+void op_cp(void *_a, void *_b) {
 	// TODO
 }
 
@@ -457,4 +558,5 @@ void set_opcodes() {
 void cpu_init() {
 	set_opcodes();
 	PC = 0;
+	*F = 0x00;
 }
