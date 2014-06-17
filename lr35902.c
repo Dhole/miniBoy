@@ -48,7 +48,7 @@ void cpu_op_ld_16(uint16_t *dst, uint16_t src) {
 }
 */
 
-void set_flag(char f, uint8_t v) {
+void set_flag(flag_t f, uint8_t v) {
 	if (v) {
 		*F |= f;
 	} else {
@@ -259,7 +259,14 @@ void op_sub(void *_a, void *_b) {
 }
 
 void op_sbc(void *_a, void *_b) {
-	// TODO
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	*a -= *b + get_flag(C_FLAG);
+
+        set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
 }
 
 void op_and(void *_a, void *_b) {
@@ -296,7 +303,13 @@ void op_or(void *_a, void *_b) {
 }
 
 void op_cp(void *_a, void *_b) {
-	// TODO
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	
+	set_flag(Z_FLAG, (*a == *b) ? 1 : 0);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
 }
 
 void op_nop(void *_a, void *_b) {
@@ -463,7 +476,8 @@ void set_opcodes() {
 	SET_OP(0x8D, "ADC A,L", op_adc, A, L, 4);
 	SET_OP(0x8E, "ADC A,(HL)", op_adc, A, (HL), 8);
 	SET_OP(0x8F, "ADC A,A", op_adc, A, A, 4);
-	
+
+	// NULLS in arithmetic operations are wrong!!!
 	SET_OP(0x90, "SUB B", op_sub, B, NULL, 4);
 	SET_OP(0x91, "SUB C", op_sub, C, NULL, 4);
 	SET_OP(0x92, "SUB D", op_sub, D, NULL, 4);
