@@ -22,6 +22,16 @@ typedef enum {
 	C_FLAG = 1 << 4,
 } flag_t;
 
+/*
+typedef enum {
+	MEM_R_8,
+	MEM_R_16,
+	MEM_W_8,
+	MEM_W_16,
+	NONE,
+} opt_t;
+*/
+
 static uint16_t pc1_val;
 static uint16_t *pc1 = &pc1_val;
 
@@ -189,6 +199,32 @@ void op_ld_8r_16a_m(void *_a, void *_b) {
 	uint16_t *b = (uint16_t*)_b;
 	*a = mem_read_8(*b);
 	*b--;
+}
+
+void op_ldi(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	*a = *b;
+	*HL++;
+}
+
+void op_ldd(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	*a = *b;
+	*HL--;
+}
+
+void op_ldhl(void *_a, void *_b) {
+	uint16_t *a = (uint16_t*)_a;
+	int8_t *b = (int8_t*)_b;
+	*HL = *a + *b;
+	
+	set_flag(Z_FLAG, 0);
+	set_flag(N_FLAG, 0);
+	// Not sure if this is right
+	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, (*a > 0xFF - *b) ? 1 : 0);
 }
 
 void op_ld_16r_sp_8v(void *_a, void *_b) {
@@ -402,29 +438,29 @@ void op_undef(void *_a, void *_b) {
 
 void set_opcodes() {
 	SET_OP(0x00, "NOP", op_nop, NULL, NULL, 4);
-	SET_OP(0x01, "LD BC,d16", op_ld_16r_16a, BC, pc1, 12);
+	SET_OP(0x01, "LD BC,d16", op_ld_16r_16a, BC, imm, 12);
 	SET_OP(0x02, "LD (BC),A", op_ld_16a_8r, BC, A, 8);
 	SET_OP(0x03, "INC BC", op_nop, NULL, NULL, 0);
 	SET_OP(0x04, "INC B", op_nop, NULL, NULL, 0);
 	SET_OP(0x05, "DEC B", op_nop, NULL, NULL, 0);
-	SET_OP(0x06, "LD B,d8", op_ld_8r_16a, B, pc1, 8);
+	SET_OP(0x06, "LD B,d8", op_ld_8r_16a, B, imm, 8);
 	SET_OP(0x07, "RLCA", op_nop, NULL, NULL, 0);
-	SET_OP(0x08, "LD (a16), SP", op_ld_16a_16r, pc1, SP, 20);
+	SET_OP(0x08, "LD (a16), SP", op_ld_16a_16r, imm, SP, 20);
 	SET_OP(0x09, "ADD HL,BC", op_nop, NULL, NULL, 0);
 	SET_OP(0x0A, "LD A,(BC)", op_ld_8r_16a, A, BC, 8);
 	SET_OP(0x0B, "DEC BC", op_nop, NULL, NULL, 0);
 	SET_OP(0x0C, "INC C", op_nop, NULL, NULL, 0);
 	SET_OP(0x0D, "DEC C", op_nop, NULL, NULL, 0);
-	SET_OP(0x0E, "LD C,d8", op_ld_8r_16a, C, pc1, 8);
+	SET_OP(0x0E, "LD C,d8", op_ld_8r_16a, C, imm, 8);
 	SET_OP(0x0E, "RRCA", op_nop, NULL, NULL, 0);
 	
 	SET_OP(0x10, "STOP 0", op_nop, NULL, NULL, 0);
-	SET_OP(0x11, "LD DE,d16", op_ld_16r_16a, DE, pc1, 12);
+	SET_OP(0x11, "LD DE,d16", op_ld_16r_16a, DE, imm, 12);
 	SET_OP(0x12, "LD (DE),A", op_ld_16a_8r, DE, A, 8);
 	SET_OP(0x13, "INC DE", op_nop, NULL, NULL, 0);
 	SET_OP(0x14, "INC D", op_nop, NULL, NULL, 0);
 	SET_OP(0x15, "DEC D", op_nop, NULL, NULL, 0);
-	SET_OP(0x16, "LD D,d8", op_ld_8r_16a, D, pc1, 8);
+	SET_OP(0x16, "LD D,d8", op_ld_8r_16a, D, imm, 8);
 	SET_OP(0x17, "RLA", op_nop, NULL, NULL, 0);
 	SET_OP(0x18, "JR r8", op_nop, NULL, NULL, 0);
 	SET_OP(0x19, "ADD HL,DE", op_nop, NULL, NULL, 0);
@@ -432,16 +468,16 @@ void set_opcodes() {
 	SET_OP(0x1B, "DEC DE", op_nop, NULL, NULL, 0);
 	SET_OP(0x1C, "INC E", op_nop, NULL, NULL, 0);
 	SET_OP(0x1D, "DEC E", op_nop, NULL, NULL, 0);
-	SET_OP(0x1E, "LD E,d8", op_ld_8r_16a, E, pc1, 8);
+	SET_OP(0x1E, "LD E,d8", op_ld_8r_16a, E, imm, 8);
 	SET_OP(0x1F, "RRA", op_nop, NULL, NULL, 0);
 	
 	SET_OP(0x20, "JR NZ,r8", op_nop, NULL, NULL, 0);
-	SET_OP(0x21, "LD HL,d16", op_ld_16r_16a, HL, pc1, 12);
+	SET_OP(0x21, "LD HL,d16", op_ld_16r_16a, HL, imm, 12);
 	SET_OP(0x22, "LD (HL+),A", op_ld_16a_8r_p, HL, A, 8);
 	SET_OP(0x23, "INC HL", op_nop, NULL, NULL, 0);
 	SET_OP(0x24, "INC H", op_nop, NULL, NULL, 0);
 	SET_OP(0x25, "DEC H", op_nop, NULL, NULL, 0);
-	SET_OP(0x26, "LD H,d8", op_ld_8r_16a, H, pc1, 8);
+	SET_OP(0x26, "LD H,d8", op_ld_8r_16a, H, imm, 8);
 	SET_OP(0x27, "DAA", op_nop, NULL, NULL, 0);
 	SET_OP(0x28, "JR Z,r8", op_nop, NULL, NULL, 0);
 	SET_OP(0x29, "ADD HL,HL", op_nop, NULL, NULL, 0);
@@ -449,16 +485,16 @@ void set_opcodes() {
 	SET_OP(0x2B, "DEC HL", op_nop, NULL, NULL, 0);
 	SET_OP(0x2C, "INC L", op_nop, NULL, NULL, 0);
 	SET_OP(0x2D, "DEC L", op_nop, NULL, NULL, 0);
-	SET_OP(0x2E, "LD L,d8", op_ld_8r_16a, L, pc1, 8);
+	SET_OP(0x2E, "LD L,d8", op_ld_8r_16a, L, imm, 8);
 	SET_OP(0x2F, "CPL", op_nop, NULL, NULL, 0);
 
 	SET_OP(0x30, "JR NC,r8", op_nop, NULL, NULL, 0);
-	SET_OP(0x31, "LD SP,d16", op_ld_16r_16a, SP, pc1, 12);
+	SET_OP(0x31, "LD SP,d16", op_ld_16r_16a, SP, imm, 12);
 	SET_OP(0x32, "LD (HL-),A", op_ld_16a_8r_m, HL, A, 8);
 	SET_OP(0x33, "INC SP", op_nop, NULL, NULL, 0);
 	SET_OP(0x34, "INC (HL)", op_nop, NULL, NULL, 0);
 	SET_OP(0x35, "DEC (HL)", op_nop, NULL, NULL, 0);
-	SET_OP(0x36, "LD (HL),d8", op_ld_16a_16a, HL, pc1, 12);
+	SET_OP(0x36, "LD (HL),d8", op_ld_16a_16a, HL, imm, 12);
 	SET_OP(0x37, "SCF", op_nop, NULL, NULL, 0);
 	SET_OP(0x38, "JR C,r8", op_nop, NULL, NULL, 0);
 	SET_OP(0x39, "ADD HL, SP", op_nop, NULL, NULL, 0);
@@ -466,7 +502,7 @@ void set_opcodes() {
 	SET_OP(0x3B, "DEC SP", op_nop, NULL, NULL, 0);
 	SET_OP(0x3C, "INC A", op_nop, NULL, NULL, 0);
 	SET_OP(0x3D, "DEC A", op_nop, NULL, NULL, 0);
-	SET_OP(0x3E, "LD A,d8", op_ld_8r_16a, A, pc1, 8);
+	SET_OP(0x3E, "LD A,d8", op_ld_8r_16a, A, imm, 8);
 	SET_OP(0x3F, "CCF", op_nop, NULL, NULL, 0);
 	
 	SET_OP(0x40, "LD B,B", op_ld_8r_8r, B, B, 4);
@@ -611,7 +647,7 @@ void set_opcodes() {
 	SET_OP(0xD0, "", op_nop, NULL, NULL, 0);
 	//...
 	
-	SET_OP(0xE0, "LDH (a8),A", op_ld_8a_8r, pc1, A, 12);
+	SET_OP(0xE0, "LDH (a8),A", op_ld_8a_8r, imm, A, 12);
 	SET_OP(0xE1, "", op_nop, NULL, NULL, 0);
 	SET_OP(0xE2, "LD (C),A", op_ld_8a_8r, C, A, 8);
 	SET_OP(0xE3, "", op_nop, NULL, NULL, 0);
@@ -621,14 +657,14 @@ void set_opcodes() {
 	SET_OP(0xE7, "", op_nop, NULL, NULL, 0);
 	SET_OP(0xE8, "", op_nop, NULL, NULL, 0);
 	SET_OP(0xE9, "", op_nop, NULL, NULL, 0);
-	SET_OP(0xEA, "LD (a16),A", op_ld_16a_8r, pc1, A, 16);
+	SET_OP(0xEA, "LD (a16),A", op_ld_16a_8r, imm, A, 16);
 	SET_OP(0xEB, "", op_nop, NULL, NULL, 0);
 	SET_OP(0xEC, "", op_nop, NULL, NULL, 0);
 	SET_OP(0xED, "", op_nop, NULL, NULL, 0);
 	SET_OP(0xEE, "", op_nop, NULL, NULL, 0);
 	SET_OP(0xEF, "", op_nop, NULL, NULL, 0);
 	
-	SET_OP(0xF0, "LDH A,(a8)", op_ld_8r_8a, A, pc1, 12);
+	SET_OP(0xF0, "LDH A,(a8)", op_ld_8r_8a, A, imm, 12);
 	SET_OP(0xF1, "", op_nop, NULL, NULL, 0);
 	SET_OP(0xF2, "LD A,(C)", op_ld_8r_8a, A, C, 8);
 	SET_OP(0xF3, "", op_nop, NULL, NULL, 0);
@@ -636,9 +672,9 @@ void set_opcodes() {
 	SET_OP(0xF5, "", op_nop, NULL, NULL, 0);
 	SET_OP(0xF6, "", op_nop, NULL, NULL, 0);
 	SET_OP(0xF7, "", op_nop, NULL, NULL, 0);
-	SET_OP(0xF8, "LD HL,SP+r8", op_ld_16r_sp_8v, HL, pc1, 12);
+	SET_OP(0xF8, "LD HL,SP+r8", op_ld_16r_sp_8v, HL, imm, 12);
 	SET_OP(0xF9, "LD SP,HL", op_ld_16r_16r, SP, HL, 8);
-	SET_OP(0xFA, "LD A,(a16)", op_ld_8r_16a, A, pc1, 16);
+	SET_OP(0xFA, "LD A,(a16)", op_ld_8r_16a, A, imm, 16);
 	SET_OP(0xFB, "", op_nop, NULL, NULL, 0);
 	SET_OP(0xFC, "", op_nop, NULL, NULL, 0);
 	SET_OP(0xFD, "", op_nop, NULL, NULL, 0);
