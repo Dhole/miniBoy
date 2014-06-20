@@ -40,6 +40,8 @@ static uint8_t C_NZ = 0, C_NC = 1, C_Z = 2, C_C = 3;
 static uint16_t imm_val;
 static uint16_t *imm = &imm_val;
 
+static uint8_t tmp;
+
 typedef struct {
 	char *desc;
 	void (*handler)(void*, void*);
@@ -73,9 +75,38 @@ uint8_t get_flag(flag_t f) {
 }
 
 void exec_op(uint8_t n) {
-	*imm = PC + 1;
+	switch (ops[n].length) {
+	case 1: break;
+	case 2: *imm_8 = mem_read_8(PC + 1); break;
+	case 3: *imm_16 = mem_read_16(PC + 1); break;
+	}
 	PC += ops[n].length;
-	ops[n].handler(ops[n].a, ops[n].b);	
+
+	switch (ops[n].opt) {
+	case MEM_R_8:
+		tmp = mem_read_8(*(uint8_t*)ops[n].b + 0xFF00);
+		ops[n].handler(ops[n].a, &tmp);
+		break;
+	case MEM_R_16:
+		tmp = mem_read_8(*(uint16_t*)ops[n].b);
+		ops[n].handler(ops[n].a, &tmp);
+		break;
+	case MEM_W_8:
+		ops[n].handler(&tmp, ops[n].b);
+		mem_write_8(*(uint8_t*)ops[n].a + 0xFF00, tmp);
+		break;
+	case MEM_W_16:
+		ops[n].handler(&tmp, ops[n].b);
+		mem_write_8(*(uint16_t*)ops[n].a, tmp);
+		break;
+	case NONE:
+		ops[n].handler(ops[n].a, ops[n].b);
+		break;
+	}
+}
+
+void exec_op_cb(uint8_t n) {
+	// ops_cb[n].handler(ops_cb[n].a, ops_cb[n].b);
 }
 
 int cpu_step() {
@@ -103,11 +134,15 @@ void cpu_dump_reg() {
 	printf("%02x %02x\n", *D, *E);
 	printf("H  L\n");
 	printf("%02x %02x\n", *H, *L);
+	printf("Z N H C\n");
+	printf("%d %d %d %d\n", (*F & Z_FLAG) >> 7, (*F & N_FLAG) >> 6,
+	       (*F & H_FLAG) >> 5, (*F & C_FLAG) >> 4);
 }
 
 void cpu_test() {
 	char t;
 	cpu_dump_reg();
+	printf("\n");
 	while (1) {
 		cpu_step();
 		printf("\n");
@@ -127,7 +162,7 @@ void op_ld_16(void *_a, void *_b) {
 	uint16_t *b = (uint16_t*)_b;
 	*a = *b;
 }
-
+/*
 void op_ld_8r_8r(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
@@ -211,7 +246,7 @@ void op_ld_8r_16a_m(void *_a, void *_b) {
 	*a = mem_read_8(*b);
 	*b--;
 }
-
+*/
 void op_ldi(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
@@ -237,7 +272,7 @@ void op_ldhl(void *_a, void *_b) {
 	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
 	set_flag(C_FLAG, (*a > 0xFF - *b) ? 1 : 0);
 }
-
+/*
 void op_ld_16r_sp_8v(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
 	int8_t *b = (int8_t*)_b;
@@ -248,7 +283,7 @@ void op_ld_16r_sp_8v(void *_a, void *_b) {
 	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
 	set_flag(C_FLAG, (*SP > 0xFF - *b) ? 1 : 0);
 }
-
+*/
 void op_halt(void *_a, void *_b) {
 	// TODO
 }
@@ -343,7 +378,9 @@ void op_cp(void *_a, void *_b) {
 void op_inc_8(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	*a++;
-	// FLAGS!
+	set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, (*a == 0x00) ? 1 : 0);
 }
 
 void op_inc_16(void *_a, void *_b) {
@@ -354,7 +391,9 @@ void op_inc_16(void *_a, void *_b) {
 void op_dec_8(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	*a--;
-	// FLAGS!
+	set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, (*a == 0xFF) ? 1 : 0);
 }
 
 void op_dec_16(void *_a, void *_b) {
@@ -391,6 +430,7 @@ void op_rlca(void *_a, void *_b) {
 }
 
 void op_jp(void *_a, void *_b) {
+	
         // TODO
 }
 
