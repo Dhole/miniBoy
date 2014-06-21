@@ -11,7 +11,7 @@ uint8_t mem_read_8(uint16_t addr) {
 }
 
 uint16_t mem_read_16(uint16_t addr) {
-	return ((uint16_t)mm[addr] << 8) + (uint16_t)mm[addr + 1];
+	return (uint16_t)mm[addr] + ((uint16_t)mm[addr + 1] << 8);
 }
 
 void mem_write_8(uint16_t addr, uint8_t v) {

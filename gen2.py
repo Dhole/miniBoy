@@ -2,8 +2,8 @@
 
 import sys
 
-#        SET_OP(0x60, "LD H,B", op_ld_8r_8r, H, B, "NONE", 1, 4);
-model = 'SET_OP(0x%02X, "%s", %s, %s, %s, %s, %s, %s);'
+#        SET_OP(0x60, "LD H,B", op_ld_8r_8r, H, B, "NONE", 1, 4, 0);
+model = 'SET_OP(0x%02X, "%s", %s, %s, %s, %s, %s, %s, %s);'
 
 
 for line in sys.stdin:
@@ -44,6 +44,13 @@ for line in sys.stdin:
 				op = "op_dec_16"
 			else:
 				op = "op_dec_8"
+		elif (op == "op_add"):
+			if (a == "SP"):
+				op = "op_addsp"
+			elif (len(a) == 2):
+				op = "op_add_16"
+			else:
+				op = "op_add_8"
 		
 		elif (op == "op_prefix"):
 			op = "op_pref_cb"
@@ -62,12 +69,21 @@ for line in sys.stdin:
 				a = "&C_" + a
 				
 		elif (op == "op_jp"):
-			if (len(a) < 3):
+			if (b == "NULL"):
+				b = a
+				a = "NULL"
+			else:
 				a = "&C_" + a
 		
 		elif (op == "op_call"):
 			if (len(a) < 3):
 				a = "&C_" + a
+				
+		elif (op == "op_stop"):
+			a = "&C_" + a
+		
+		elif (op == "op_ldh"):
+			op = "op_ld_8"
 		
 		if (a[0] == "("):
 			if (len(a) == 1 + 2 or a == "(a8)"):
@@ -87,9 +103,15 @@ for line in sys.stdin:
 			a = "&C_" + a
 		
 		if (b[0] == "d" or b[0] == "a" or b[0] == "r"):
-			b = "imm"
+			if (b[1] == "8"):
+				b = "imm_8"
+			else:
+				b = "imm_16"
 		elif (a[0] == "d" or a[0] == "a" or a[0] == "r"):
-			a = "imm"
+			if (a[1] == "8"):
+				a = "imm_8"
+			else:
+				a = "imm_16"
 		
 		if (code == 0x22):
 			op = "op_ldi"
@@ -109,7 +131,13 @@ for line in sys.stdin:
 			b = "imm_8"
 		
 		length = line[-6]
-		cycl = line[-5]
-		print(model % (code, desc, op, a, b, opt, length, cycl))
+		cycl = line[-5].split("/")
+		if (len(cycl) == 2):
+			c0 = cycl[1]
+			c1 = cycl[0]
+		else:
+			c0 = cycl[0]
+			c1 = "0"
+		print(model % (code, desc, op, a, b, opt, length, c0, c1))
 	else:
-		print(model % (code, "-", "op_undef", "NULL", "NULL", "NONE", "1", "0"))
+		print(model % (code, "-", "op_undef", "NULL", "NULL", "NONE", "1", "0", "0"))
