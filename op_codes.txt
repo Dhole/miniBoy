@@ -224,7 +224,7 @@ de SBC A,d8 2 8 Z 1 H C
 df RST 18H 1 16 - - - -
 e0 LDH (a8),A 2 12 - - - -
 e1 POP HL 1 12 - - - -
-e2 LD (C),A 2 8 - - - -
+e2 LD (C),A 1 8 - - - -
 e3 
 e4 
 e5 PUSH HL 1 16 - - - -
@@ -240,7 +240,7 @@ ee XOR d8 2 8 Z 0 0 0
 ef RST 28H 1 16 - - - -
 f0 LDH A,(a8) 2 12 - - - -
 f1 POP AF 1 12 Z N H C
-f2 LD A,(C) 2 8 - - - -
+f2 LD A,(C) 1 8 - - - -
 f3 DI 1 4 - - - -
 f4 
 f5 PUSH AF 1 16 - - - -

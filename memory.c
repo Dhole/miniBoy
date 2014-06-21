@@ -19,8 +19,11 @@ void mem_write_8(uint16_t addr, uint8_t v) {
 }
 
 void mem_write_16(uint16_t addr, uint16_t v) {
-	mm[addr] = (uint8_t)(v && 0x00FF);
-	mm[addr + 1] = (uint8_t)((v && 0xFF00) >> 8);
+	//printf("PC: %04X\n", v);
+	//printf("PC_a: %02X\n", (uint8_t)(v & 0x00FF));
+	//printf("PC_b: %02X\n", (uint8_t)((v & 0xFF00) >> 8));
+	mm[addr] = (uint8_t)(v & 0x00FF);
+	mm[addr + 1] = (uint8_t)((v & 0xFF00) >> 8);
 }
 
 void mem_load(uint16_t addr, uint8_t *buf, uint16_t size) {
@@ -30,10 +33,10 @@ void mem_load(uint16_t addr, uint8_t *buf, uint16_t size) {
 void mem_dump(uint16_t start, uint16_t end) {
 	//unsigned char *buf = (unsigned char*)&memory;
 	int i, j;
-	for (i = start; i < end; i += 16) {
+	for (i = start; i <= end; i += 16) {
 		printf("%04x  ", i);
-		for (j = 0; j < 16; j++) {
-			if (i + j < end) {
+		for (j = 0; j <= 16; j++) {
+			if (i + j <= end) {
 				printf("%02x ", mm[i+j]);
 			} else {
 				printf("   ");
@@ -44,7 +47,7 @@ void mem_dump(uint16_t start, uint16_t end) {
 		}
 		printf(" |");
 		for (j = 0; j < 16; j++) {
-			if (i + j < end) {
+			if (i + j <= end) {
 				printf("%c", isprint(mm[i+j]) ? mm[i+j] : '.');
 			}
 		}

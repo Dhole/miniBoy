@@ -27,6 +27,7 @@ typedef enum {
 	MEM_R_16,
 	MEM_W_8,
 	MEM_W_16,
+	MEM_RW_16,
 	NONE,
 } opt_t;
 
@@ -59,9 +60,10 @@ typedef struct {
 	opt_t opt;
 	uint8_t length;
 	uint8_t cycles[2];
-} opcode;
+} opcode_t;
 
-static opcode ops[256];
+static opcode_t ops[256];
+static opcode_t ops_cb[256];
 
 void set_flag(flag_t f, uint8_t v) {
 	if (v) {
@@ -84,6 +86,8 @@ uint8_t get_flag(flag_t f) {
 }
 
 void exec_op(uint8_t n) {
+	printf("0x%04X : %02X -> %s\n", PC, n, ops[n].desc);
+	
 	switch (ops[n].length) {
 	case 1: break;
 	case 2: *imm_8 = mem_read_8(PC + 1); break;
@@ -115,7 +119,26 @@ void exec_op(uint8_t n) {
 }
 
 void exec_op_cb(uint8_t n) {
-	// ops_cb[n].handler(ops_cb[n].a, ops_cb[n].b);
+	printf("0x%04X : %02X -> %s\n", PC, n, ops_cb[n].desc);
+	
+	switch (ops_cb[n].opt) {
+	case MEM_R_16:
+		tmp = mem_read_8(*(uint16_t*)ops_cb[n].b);
+		ops[n].handler(ops_cb[n].a, &tmp);
+		break;
+	case MEM_W_16:
+		ops_cb[n].handler(&tmp, ops_cb[n].b);
+		mem_write_8(*(uint16_t*)ops_cb[n].a, tmp);
+		break;
+	case MEM_RW_16:
+		tmp = mem_read_8(*(uint16_t*)ops_cb[n].a);
+		ops[n].handler(&tmp, ops_cb[n].b);
+		mem_write_8(*(uint16_t*)ops_cb[n].a, tmp);
+		
+	case NONE:
+		ops_cb[n].handler(ops[n].a, ops[n].b);
+		break;
+	}
 }
 
 int cpu_step() {
@@ -124,20 +147,23 @@ int cpu_step() {
 	//uint16_t d16, a16;
 
 	op = mem_read_8(PC);
-	printf("0x%04X : %02X -> %s\n", PC, op, ops[op].desc);
 	
 	//OP(op);
 	exec_op(op);
 
-	if (ops[op].cycles[1]) {
-		if (ext_cycles) {
-			ext_cycles = 0;
-			return ops[op].cycles[1];
+	if (op == 0xCB) {
+		return ops_cb[mem_read_8(PC + 1)].cycles[0];
+	} else {
+		if (ops[op].cycles[1]) {
+			if (ext_cycles) {
+				ext_cycles = 0;
+				return ops[op].cycles[1];
+			} else {
+				return ops[op].cycles[0];
+			}
 		} else {
 			return ops[op].cycles[0];
 		}
-	} else {
-		return ops[op].cycles[0];
 	}
 	
 }
@@ -160,13 +186,24 @@ void cpu_dump_reg() {
 
 void cpu_test() {
 	char t;
-	cpu_dump_reg();
-	printf("\n");
+	
 	while (1) {
-		cpu_step();
-		printf("\n");
-		cpu_dump_reg();
-		scanf("%c", &t);
+		printf("> ");
+		scanf("%c%*c", &t);
+		switch (t) {
+		case 's':
+			cpu_step();
+			break;
+		case 'r':
+			cpu_dump_reg();
+			break;
+		case 'm':
+			mem_dump(0xFFF0, 0xFFFF);
+			break;
+		default:
+			cpu_step();
+			break;
+		}
 	}
 }
 
@@ -425,8 +462,8 @@ void op_push(void *_a, void *_b) {
 
 void op_pop(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
-	*a = mem_read_16(*SP);
 	*SP += 2;
+	*a = mem_read_16(*SP);
 }
 
 void op_jp(void *_a, void *_b) {
@@ -544,12 +581,123 @@ void op_nop(void *_a, void *_b) {
         
 }
 
-void op_pref_cb(void *_a, void *_b) {
-        
-}
-
 void op_undef(void *_a, void *_b) {
         // TODO
+}
+
+void op_pref_cb(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	exec_op_cb(*a);
+}
+
+// prefix CB opcodes
+void op_rlc(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t b7 = (*a & 0x80) >> 7;
+	*a = *a << 1;
+	*a += b7;
+
+	set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, 0);
+	set_flag(C_FLAG, b7);
+}
+
+void op_rrc(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t b0 = *a & 0x01;
+	*a = *a >> 1;
+	*a += b0 << 7;
+
+	set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, 0);
+	set_flag(C_FLAG, b0);
+}
+
+void op_rl(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t b7 = (*a & 0x80) >> 7;
+	*a = *a << 1;
+	*a += (*F & C_FLAG) >> 4;
+
+	set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, 0);
+	set_flag(C_FLAG, b7);
+}
+
+void op_rr(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t b0 = *a & 0x01;
+	*a = *a >> 1;
+	*a += ((*F & C_FLAG) >> 4) << 7;
+
+	set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, 0);
+	set_flag(C_FLAG, b0);
+}
+
+void op_sla(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t b7 = (*a & 0x80) >> 7;
+	*a = *a << 1;
+
+	set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, 0);
+	set_flag(C_FLAG, b7);
+}
+
+void op_sra(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t b0 = *a & 0x01;
+	uint8_t b7 = (*a & 0x80) >> 7;
+	*a = *a >> 1;
+	*a += b7 << 7;
+
+	set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, 0);
+	set_flag(C_FLAG, b0);
+}
+
+void op_swap(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	*a = (*a << 4) + (*a & 0xF0 >> 4);
+}
+
+void op_srl(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t b0 = *a & 0x01;
+	*a = *a >> 1;
+
+	set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, 0);
+	set_flag(C_FLAG, b0);
+}
+
+void op_bit(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	
+	set_flag(Z_FLAG, (*a & (1 << *b)) ? 0 : 1);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, 1);
+}
+
+void op_res(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	*a &= ~(1 << *b);
+}
+
+void op_set(void *_a, void *_b) {
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t *b = (uint8_t*)_b;
+	*a |= 1 << *b;
 }
 
 /*
@@ -777,9 +925,9 @@ SET_OP(0xC7, "RST 00H", op_rst, &C_00H, NULL, NONE, 1, 16, 0);
 SET_OP(0xC8, "RET Z", op_ret, &C_Z, NULL, NONE, 1, 8, 20);
 SET_OP(0xC9, "RET", op_ret, NULL, NULL, NONE, 1, 16, 0);
 SET_OP(0xCA, "JP Z,a16", op_jp, &C_Z, imm_16, NONE, 3, 12, 16);
-SET_OP(0xCB, "PREFIX CB", op_pref_cb, NULL, NULL, NONE, 1, 4, 0);
+SET_OP(0xCB, "PREFIX CB", op_pref_cb, imm_8, NULL, NONE, 2, 4, 0);
 SET_OP(0xCC, "CALL Z,a16", op_call, &C_Z, imm_16, NONE, 3, 12, 24);
-SET_OP(0xCD, "CALL a16", op_call, imm_16, NULL, NONE, 3, 24, 0);
+SET_OP(0xCD, "CALL a16", op_call, NULL, imm_16, NONE, 3, 24, 0);
 SET_OP(0xCE, "ADC A,d8", op_adc, A, imm_8, NONE, 2, 8, 0);
 SET_OP(0xCF, "RST 08H", op_rst, &C_08H, NULL, NONE, 1, 16, 0);
 SET_OP(0xD0, "RET NC", op_ret, &C_NC, NULL, NONE, 1, 8, 20);
@@ -800,7 +948,7 @@ SET_OP(0xDE, "SBC A,d8", op_sbc, A, imm_8, NONE, 2, 8, 0);
 SET_OP(0xDF, "RST 18H", op_rst, &C_18H, NULL, NONE, 1, 16, 0);
 SET_OP(0xE0, "LDH (a8),A", op_ld_8, imm_8, A, MEM_W_8, 2, 12, 0);
 SET_OP(0xE1, "POP HL", op_pop, HL, NULL, NONE, 1, 12, 0);
-SET_OP(0xE2, "LD (C),A", op_ld_8, C, A, MEM_W_8, 2, 8, 0);
+SET_OP(0xE2, "LD (C),A", op_ld_8, C, A, MEM_W_8, 1, 8, 0);
 SET_OP(0xE3, "-", op_undef, NULL, NULL, NONE, 1, 0, 0);
 SET_OP(0xE4, "-", op_undef, NULL, NULL, NONE, 1, 0, 0);
 SET_OP(0xE5, "PUSH HL", op_push, HL, NULL, NONE, 1, 16, 0);
@@ -816,7 +964,7 @@ SET_OP(0xEE, "XOR d8", op_xor, A, imm_8, NONE, 2, 8, 0);
 SET_OP(0xEF, "RST 28H", op_rst, &C_28H, NULL, NONE, 1, 16, 0);
 SET_OP(0xF0, "LDH A,(a8)", op_ld_8, A, imm_8, MEM_R_8, 2, 12, 0);
 SET_OP(0xF1, "POP AF", op_pop, AF, NULL, NONE, 1, 12, 0);
-SET_OP(0xF2, "LD A,(C)", op_ld_8, A, C, MEM_R_8, 2, 8, 0);
+SET_OP(0xF2, "LD A,(C)", op_ld_8, A, C, MEM_R_8, 1, 8, 0);
 SET_OP(0xF3, "DI", op_di, NULL, NULL, NONE, 1, 4, 0);
 SET_OP(0xF4, "-", op_undef, NULL, NULL, NONE, 1, 0, 0);
 SET_OP(0xF5, "PUSH AF", op_push, AF, NULL, NONE, 1, 16, 0);
@@ -832,8 +980,278 @@ SET_OP(0xFE, "CP d8", op_cp, A, imm_8, NONE, 2, 8, 0);
 SET_OP(0xFF, "RST 38H", op_rst, &C_38H, NULL, NONE, 1, 16, 0);
 }
 
+#define SET_OP_CB(i, d, f, _a, _b, o, l, c0, c1)	\
+	ops_cb[i].desc = d;				\
+	ops_cb[i].handler = &f;				\
+	ops_cb[i].a = _a;				\
+	ops_cb[i].b = _b;				\
+	ops_cb[i].opt = o;				\
+	ops_cb[i].length = l;				\
+	ops_cb[i].cycles[0] = c0;			\
+	ops_cb[i].cycles[1] = c1;
+
+void set_opcodes_cb() {
+	SET_OP_CB(0x00, "RLC B", op_rlc, B, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x01, "RLC C", op_rlc, C, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x02, "RLC D", op_rlc, D, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x03, "RLC E", op_rlc, E, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x04, "RLC H", op_rlc, H, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x05, "RLC L", op_rlc, L, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x06, "RLC (HL)", op_rlc, HL, NULL, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x07, "RLC A", op_rlc, A, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x08, "RRC B", op_rrc, B, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x09, "RRC C", op_rrc, C, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x0A, "RRC D", op_rrc, D, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x0B, "RRC E", op_rrc, E, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x0C, "RRC H", op_rrc, H, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x0D, "RRC L", op_rrc, L, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x0E, "RRC (HL)", op_rrc, HL, NULL, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x0F, "RRC A", op_rrc, A, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x10, "RL B", op_rl, B, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x11, "RL C", op_rl, C, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x12, "RL D", op_rl, D, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x13, "RL E", op_rl, E, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x14, "RL H", op_rl, H, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x15, "RL L", op_rl, L, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x16, "RL (HL)", op_rl, HL, NULL, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x17, "RL A", op_rl, A, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x18, "RR B", op_rr, B, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x19, "RR C", op_rr, C, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x1A, "RR D", op_rr, D, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x1B, "RR E", op_rr, E, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x1C, "RR H", op_rr, H, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x1D, "RR L", op_rr, L, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x1E, "RR (HL)", op_rr, HL, NULL, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x1F, "RR A", op_rr, A, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x20, "SLA B", op_sla, B, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x21, "SLA C", op_sla, C, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x22, "SLA D", op_sla, D, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x23, "SLA E", op_sla, E, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x24, "SLA H", op_sla, H, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x25, "SLA L", op_sla, L, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x26, "SLA (HL)", op_sla, HL, NULL, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x27, "SLA A", op_sla, A, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x28, "SRA B", op_sra, B, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x29, "SRA C", op_sra, C, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x2A, "SRA D", op_sra, D, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x2B, "SRA E", op_sra, E, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x2C, "SRA H", op_sra, H, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x2D, "SRA L", op_sra, L, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x2E, "SRA (HL)", op_sra, HL, NULL, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x2F, "SRA A", op_sra, A, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x30, "SWAP B", op_swap, B, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x31, "SWAP C", op_swap, C, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x32, "SWAP D", op_swap, D, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x33, "SWAP E", op_swap, E, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x34, "SWAP H", op_swap, H, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x35, "SWAP L", op_swap, L, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x36, "SWAP (HL)", op_swap, HL, NULL, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x37, "SWAP A", op_swap, A, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x38, "SRL B", op_srl, B, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x39, "SRL C", op_srl, C, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x3A, "SRL D", op_srl, D, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x3B, "SRL E", op_srl, E, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x3C, "SRL H", op_srl, H, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x3D, "SRL L", op_srl, L, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x3E, "SRL (HL)", op_srl, HL, NULL, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x3F, "SRL A", op_srl, A, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x40, "BIT 0,B", op_bit, B, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x41, "BIT 0,C", op_bit, C, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x42, "BIT 0,D", op_bit, D, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x43, "BIT 0,E", op_bit, E, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x44, "BIT 0,H", op_bit, H, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x45, "BIT 0,L", op_bit, L, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x46, "BIT 0,(HL)", op_bit, HL, &C_0, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x47, "BIT 0,A", op_bit, A, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x48, "BIT 1,B", op_bit, B, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x49, "BIT 1,C", op_bit, C, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x4A, "BIT 1,D", op_bit, D, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x4B, "BIT 1,E", op_bit, E, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x4C, "BIT 1,H", op_bit, H, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x4D, "BIT 1,L", op_bit, L, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x4E, "BIT 1,(HL)", op_bit, HL, &C_1, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x4F, "BIT 1,A", op_bit, A, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x50, "BIT 2,B", op_bit, B, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x51, "BIT 2,C", op_bit, C, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x52, "BIT 2,D", op_bit, D, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x53, "BIT 2,E", op_bit, E, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x54, "BIT 2,H", op_bit, H, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x55, "BIT 2,L", op_bit, L, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x56, "BIT 2,(HL)", op_bit, HL, &C_2, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x57, "BIT 2,A", op_bit, A, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x58, "BIT 3,B", op_bit, B, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x59, "BIT 3,C", op_bit, C, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x5A, "BIT 3,D", op_bit, D, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x5B, "BIT 3,E", op_bit, E, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x5C, "BIT 3,H", op_bit, H, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x5D, "BIT 3,L", op_bit, L, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x5E, "BIT 3,(HL)", op_bit, HL, &C_3, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x5F, "BIT 3,A", op_bit, A, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x60, "BIT 4,B", op_bit, B, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0x61, "BIT 4,C", op_bit, C, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0x62, "BIT 4,D", op_bit, D, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0x63, "BIT 4,E", op_bit, E, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0x64, "BIT 4,H", op_bit, H, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0x65, "BIT 4,L", op_bit, L, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0x66, "BIT 4,(HL)", op_bit, HL, &C_4, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x67, "BIT 4,A", op_bit, A, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0x68, "BIT 5,B", op_bit, B, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0x69, "BIT 5,C", op_bit, C, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0x6A, "BIT 5,D", op_bit, D, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0x6B, "BIT 5,E", op_bit, E, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0x6C, "BIT 5,H", op_bit, H, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0x6D, "BIT 5,L", op_bit, L, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0x6E, "BIT 5,(HL)", op_bit, HL, &C_5, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x6F, "BIT 5,A", op_bit, A, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0x70, "BIT 6,B", op_bit, B, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0x71, "BIT 6,C", op_bit, C, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0x72, "BIT 6,D", op_bit, D, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0x73, "BIT 6,E", op_bit, E, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0x74, "BIT 6,H", op_bit, H, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0x75, "BIT 6,L", op_bit, L, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0x76, "BIT 6,(HL)", op_bit, HL, &C_6, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x77, "BIT 6,A", op_bit, A, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0x78, "BIT 7,B", op_bit, B, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0x79, "BIT 7,C", op_bit, C, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0x7A, "BIT 7,D", op_bit, D, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0x7B, "BIT 7,E", op_bit, E, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0x7C, "BIT 7,H", op_bit, H, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0x7D, "BIT 7,L", op_bit, L, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0x7E, "BIT 7,(HL)", op_bit, HL, &C_7, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x7F, "BIT 7,A", op_bit, A, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0x80, "RES 0,B", op_res, B, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x81, "RES 0,C", op_res, C, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x82, "RES 0,D", op_res, D, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x83, "RES 0,E", op_res, E, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x84, "RES 0,H", op_res, H, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x85, "RES 0,L", op_res, L, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x86, "RES 0,(HL)", op_res, HL, &C_0, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x87, "RES 0,A", op_res, A, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0x88, "RES 1,B", op_res, B, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x89, "RES 1,C", op_res, C, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x8A, "RES 1,D", op_res, D, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x8B, "RES 1,E", op_res, E, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x8C, "RES 1,H", op_res, H, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x8D, "RES 1,L", op_res, L, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x8E, "RES 1,(HL)", op_res, HL, &C_1, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x8F, "RES 1,A", op_res, A, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0x90, "RES 2,B", op_res, B, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x91, "RES 2,C", op_res, C, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x92, "RES 2,D", op_res, D, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x93, "RES 2,E", op_res, E, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x94, "RES 2,H", op_res, H, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x95, "RES 2,L", op_res, L, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x96, "RES 2,(HL)", op_res, HL, &C_2, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x97, "RES 2,A", op_res, A, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0x98, "RES 3,B", op_res, B, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x99, "RES 3,C", op_res, C, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x9A, "RES 3,D", op_res, D, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x9B, "RES 3,E", op_res, E, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x9C, "RES 3,H", op_res, H, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x9D, "RES 3,L", op_res, L, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0x9E, "RES 3,(HL)", op_res, HL, &C_3, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x9F, "RES 3,A", op_res, A, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0xA0, "RES 4,B", op_res, B, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xA1, "RES 4,C", op_res, C, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xA2, "RES 4,D", op_res, D, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xA3, "RES 4,E", op_res, E, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xA4, "RES 4,H", op_res, H, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xA5, "RES 4,L", op_res, L, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xA6, "RES 4,(HL)", op_res, HL, &C_4, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0xA7, "RES 4,A", op_res, A, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xA8, "RES 5,B", op_res, B, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xA9, "RES 5,C", op_res, C, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xAA, "RES 5,D", op_res, D, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xAB, "RES 5,E", op_res, E, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xAC, "RES 5,H", op_res, H, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xAD, "RES 5,L", op_res, L, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xAE, "RES 5,(HL)", op_res, HL, &C_5, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0xAF, "RES 5,A", op_res, A, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xB0, "RES 6,B", op_res, B, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xB1, "RES 6,C", op_res, C, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xB2, "RES 6,D", op_res, D, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xB3, "RES 6,E", op_res, E, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xB4, "RES 6,H", op_res, H, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xB5, "RES 6,L", op_res, L, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xB6, "RES 6,(HL)", op_res, HL, &C_6, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0xB7, "RES 6,A", op_res, A, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xB8, "RES 7,B", op_res, B, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xB9, "RES 7,C", op_res, C, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xBA, "RES 7,D", op_res, D, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xBB, "RES 7,E", op_res, E, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xBC, "RES 7,H", op_res, H, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xBD, "RES 7,L", op_res, L, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xBE, "RES 7,(HL)", op_res, HL, &C_7, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0xBF, "RES 7,A", op_res, A, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xC0, "SET 0,B", op_set, B, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0xC1, "SET 0,C", op_set, C, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0xC2, "SET 0,D", op_set, D, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0xC3, "SET 0,E", op_set, E, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0xC4, "SET 0,H", op_set, H, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0xC5, "SET 0,L", op_set, L, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0xC6, "SET 0,(HL)", op_set, HL, &C_0, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0xC7, "SET 0,A", op_set, A, &C_0, NONE, 2, 8, 0);
+SET_OP_CB(0xC8, "SET 1,B", op_set, B, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0xC9, "SET 1,C", op_set, C, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0xCA, "SET 1,D", op_set, D, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0xCB, "SET 1,E", op_set, E, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0xCC, "SET 1,H", op_set, H, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0xCD, "SET 1,L", op_set, L, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0xCE, "SET 1,(HL)", op_set, HL, &C_1, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0xCF, "SET 1,A", op_set, A, &C_1, NONE, 2, 8, 0);
+SET_OP_CB(0xD0, "SET 2,B", op_set, B, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0xD1, "SET 2,C", op_set, C, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0xD2, "SET 2,D", op_set, D, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0xD3, "SET 2,E", op_set, E, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0xD4, "SET 2,H", op_set, H, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0xD5, "SET 2,L", op_set, L, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0xD6, "SET 2,(HL)", op_set, HL, &C_2, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0xD7, "SET 2,A", op_set, A, &C_2, NONE, 2, 8, 0);
+SET_OP_CB(0xD8, "SET 3,B", op_set, B, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0xD9, "SET 3,C", op_set, C, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0xDA, "SET 3,D", op_set, D, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0xDB, "SET 3,E", op_set, E, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0xDC, "SET 3,H", op_set, H, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0xDD, "SET 3,L", op_set, L, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0xDE, "SET 3,(HL)", op_set, HL, &C_3, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0xDF, "SET 3,A", op_set, A, &C_3, NONE, 2, 8, 0);
+SET_OP_CB(0xE0, "SET 4,B", op_set, B, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xE1, "SET 4,C", op_set, C, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xE2, "SET 4,D", op_set, D, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xE3, "SET 4,E", op_set, E, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xE4, "SET 4,H", op_set, H, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xE5, "SET 4,L", op_set, L, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xE6, "SET 4,(HL)", op_set, HL, &C_4, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0xE7, "SET 4,A", op_set, A, &C_4, NONE, 2, 8, 0);
+SET_OP_CB(0xE8, "SET 5,B", op_set, B, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xE9, "SET 5,C", op_set, C, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xEA, "SET 5,D", op_set, D, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xEB, "SET 5,E", op_set, E, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xEC, "SET 5,H", op_set, H, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xED, "SET 5,L", op_set, L, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xEE, "SET 5,(HL)", op_set, HL, &C_5, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0xEF, "SET 5,A", op_set, A, &C_5, NONE, 2, 8, 0);
+SET_OP_CB(0xF0, "SET 6,B", op_set, B, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xF1, "SET 6,C", op_set, C, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xF2, "SET 6,D", op_set, D, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xF3, "SET 6,E", op_set, E, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xF4, "SET 6,H", op_set, H, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xF5, "SET 6,L", op_set, L, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xF6, "SET 6,(HL)", op_set, HL, &C_6, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0xF7, "SET 6,A", op_set, A, &C_6, NONE, 2, 8, 0);
+SET_OP_CB(0xF8, "SET 7,B", op_set, B, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xF9, "SET 7,C", op_set, C, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xFA, "SET 7,D", op_set, D, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xFB, "SET 7,E", op_set, E, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xFC, "SET 7,H", op_set, H, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xFD, "SET 7,L", op_set, L, &C_7, NONE, 2, 8, 0);
+SET_OP_CB(0xFE, "SET 7,(HL)", op_set, HL, &C_7, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0xFF, "SET 7,A", op_set, A, &C_7, NONE, 2, 8, 0);
+}
+
 void cpu_init() {
 	set_opcodes();
+	set_opcodes_cb();
 	PC = 0;
 	*F = 0x00;
 }
