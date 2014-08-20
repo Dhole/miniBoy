@@ -1,6 +1,9 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include "memory.h"
+#include "string_fun.h"
 
 #define OP(n) ops[n].handler(ops[n].a, ops[n].b);
 
@@ -14,6 +17,37 @@ static uint8_t *F = (uint8_t*)&regs[0], *A = (uint8_t*)&regs[1],
 	*C = (uint8_t*)&regs[2], *B = (uint8_t*)&regs[3],
 	*E = (uint8_t*)&regs[4], *D = (uint8_t*)&regs[5],
 	*L = (uint8_t*)&regs[6], *H = (uint8_t*)&regs[7];
+
+static uint8_t ime_flag;
+
+typedef struct {
+	uint16_t PC, SP_val;
+	uint16_t *SP;
+	uint8_t r_data[8];
+	uint16_t *AF , *BC, *DE, *HL;
+	uint8_t *F, *A, *C, *B, *E, *D, *L, *H;
+
+	uint8_t ime_flag;
+} regs_t;
+static regs_t regs_;
+
+void init_regs(regs_t *regs) {
+	regs->SP = &regs->SP_val;
+	
+	regs->AF = (uint16_t*)&regs->r_data[0];
+	regs->BC = (uint16_t*)&regs->r_data[2];
+	regs->DE = (uint16_t*)&regs->r_data[4];
+	regs->HL = (uint16_t*)&regs->r_data[6];
+
+	regs->F = (uint8_t*)&regs->r_data[0];
+	regs->A = (uint8_t*)&regs->r_data[1];
+	regs->C = (uint8_t*)&regs->r_data[2];
+	regs->B = (uint8_t*)&regs->r_data[3];
+	regs->E = (uint8_t*)&regs->r_data[4];
+	regs->D = (uint8_t*)&regs->r_data[5];
+	regs->L = (uint8_t*)&regs->r_data[6];
+	regs->H = (uint8_t*)&regs->r_data[7];
+}
 
 typedef enum {
 	Z_FLAG = 1 << 7,
@@ -60,10 +94,10 @@ typedef struct {
 	opt_t opt;
 	uint8_t length;
 	uint8_t cycles[2];
-} opcode_t;
+} inst_t;
 
-static opcode_t ops[256];
-static opcode_t ops_cb[256];
+static inst_t ops[256];
+static inst_t ops_cb[256];
 
 void set_flag(flag_t f, uint8_t v) {
 	if (v) {
@@ -86,7 +120,7 @@ uint8_t get_flag(flag_t f) {
 }
 
 void exec_op(uint8_t n) {
-	printf("0x%04X : %02X -> %s\n", PC, n, ops[n].desc);
+	//printf("0x%04X : %02X -> %s\n", PC, n, ops[n].desc);
 	
 	switch (ops[n].length) {
 	case 1: break;
@@ -119,12 +153,12 @@ void exec_op(uint8_t n) {
 }
 
 void exec_op_cb(uint8_t n) {
-	printf("0x%04X : %02X -> %s\n", PC, n, ops_cb[n].desc);
+	//printf("0x%04X : %02X -> %s\n", PC - 1, n, ops_cb[n].desc);
 	
 	switch (ops_cb[n].opt) {
 	case MEM_R_16:
 		tmp = mem_read_8(*(uint16_t*)ops_cb[n].b);
-		ops[n].handler(ops_cb[n].a, &tmp);
+		ops_cb[n].handler(ops_cb[n].a, &tmp);
 		break;
 	case MEM_W_16:
 		ops_cb[n].handler(&tmp, ops_cb[n].b);
@@ -132,13 +166,65 @@ void exec_op_cb(uint8_t n) {
 		break;
 	case MEM_RW_16:
 		tmp = mem_read_8(*(uint16_t*)ops_cb[n].a);
-		ops[n].handler(&tmp, ops_cb[n].b);
+		ops_cb[n].handler(&tmp, ops_cb[n].b);
 		mem_write_8(*(uint16_t*)ops_cb[n].a, tmp);
-		
+		break;
 	case NONE:
-		ops_cb[n].handler(ops[n].a, ops[n].b);
+		ops_cb[n].handler(ops_cb[n].a, ops_cb[n].b);
 		break;
 	}
+}
+
+uint8_t disas_op(uint16_t off) {
+	uint8_t op;
+	inst_t inst;
+	uint8_t arg_8;
+	uint16_t arg_16;
+	char code[16];
+	char desc[32];
+	char *desc_tmp;
+	
+	op = mem_read_8(off);
+	if (op == 0xCB) {
+		arg_8 = mem_read_8(off + 1);
+		inst = ops_cb[arg_8];
+		sprintf(code, "%02x %02x   ", op, arg_8);
+		strncpy(desc, inst.desc, 32);
+	} else {
+		inst = ops[op];
+		if (inst.length == 2) {
+			arg_8 = mem_read_8(off + 1);
+			sprintf(code, "%02x %02x   ", op, arg_8);
+		} else if (inst.length == 3) {
+			arg_16 = mem_read_16(off + 1);
+			sprintf(code, "%02x %02x %02x",
+				op, arg_16 & 0x00FF, (arg_16 & 0xFF00) >> 8);
+		} else {
+			sprintf(code, "%02x      ", op);
+		}
+		strncpy(desc, inst.desc, 32);
+		if (inst.length > 1) {
+			if (strstr(desc, "d8") != NULL) {
+				desc_tmp = replace_str(desc, "d8", "$0x%02x");
+				sprintf(desc, desc_tmp, arg_8);
+			} else if (strstr(desc, "r8") != NULL) {
+				desc_tmp = replace_str(desc, "r8", "0x%04x");
+				sprintf(desc, desc_tmp, off + 2 + (int8_t)arg_8);
+			} else if (strstr(desc, "a8") != NULL) {
+				desc_tmp = replace_str(desc, "a8", "0x%04x");
+				sprintf(desc, desc_tmp, 0xFF00 + arg_8);
+			} else if (strstr(desc, "d16") != NULL) {
+				desc_tmp = replace_str(desc, "d16", "$0x%04x");
+				sprintf(desc, desc_tmp, arg_16);
+			} else if (strstr(desc, "a16") != NULL) {
+				desc_tmp = replace_str(desc, "a16", "$0x%04x");
+				sprintf(desc, desc_tmp, arg_16);
+			}
+			free(desc_tmp);
+		}
+	}
+	printf("0x%04X: %s   %s\n", off, code, desc);
+	return inst.length;
 }
 
 int cpu_step() {
@@ -148,8 +234,12 @@ int cpu_step() {
 
 	op = mem_read_8(PC);
 	
-	//OP(op);
 	exec_op(op);
+
+	// Handle interrupts
+	if (ime_flag) {
+		
+	}
 
 	if (op == 0xCB) {
 		return ops_cb[mem_read_8(PC + 1)].cycles[0];
@@ -185,25 +275,63 @@ void cpu_dump_reg() {
 }
 
 void cpu_test() {
-	char t;
+	char line[128];
+	char *a = NULL, *b = NULL, *c = NULL;
+	uint16_t vb = 0, vc = 0;
+	int i;
+	////
+	uint16_t off = 0;
 	
 	while (1) {
 		printf("> ");
-		scanf("%c%*c", &t);
-		switch (t) {
+		fgets(line, 128, stdin);
+		a = strtok(line, " ");
+		if (b = strtok(NULL, " ")) {
+			vb = strtol(b, NULL, 16);
+		} else {
+			vb = 0;
+		}
+		if (c = strtok(NULL, " ")) {
+			vc = strtol(c, NULL, 16);
+		} else {
+			vc = 0;
+		}
+		switch (a[0]) {
 		case 's':
-			cpu_step();
+			for (i = 0; i < vb; i++) {
+				disas_op(PC);
+				cpu_step();
+			}
+			break;
+		case 'b':
+			if (vb == 0) {
+				break;
+			}
+			printf("Set breakpoint at 0x%04X\n", vb);
+			while (PC != vb) {
+				disas_op(PC);
+				cpu_step();
+			}
 			break;
 		case 'r':
 			cpu_dump_reg();
 			break;
 		case 'm':
-			mem_dump(0xFFF0, 0xFFFF);
+			//mem_dump(0xFFF0, 0xFFFF);
+			mem_dump(vb, vc);
+			break;
+		case 'd':
+			for (i = 0; i < 100; i++) {
+				off += disas_op(off);
+			}
+			
 			break;
 		default:
+			disas_op(PC);
 			cpu_step();
 			break;
 		}
+		
 	}
 }
 
@@ -223,14 +351,14 @@ void op_ldi(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
 	*a = *b;
-	*HL++;
+	(*HL)++;
 }
 
 void op_ldd(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
 	*a = *b;
-	*HL--;
+	(*HL)--;
 }
 
 void op_ldhl(void *_a, void *_b) {
@@ -359,7 +487,7 @@ void op_cp(void *_a, void *_b) {
 
 void op_inc_8(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
-	*a++;
+	(*a)++;
 	set_flag_Z(a);
 	set_flag(N_FLAG, 0);
 	set_flag(H_FLAG, (*a == 0x00) ? 1 : 0);
@@ -367,12 +495,12 @@ void op_inc_8(void *_a, void *_b) {
 
 void op_inc_16(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
-	*a++;
+	(*a)++;
 }
 
 void op_dec_8(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
-	*a--;
+	(*a)--;
 	set_flag_Z(a);
 	set_flag(N_FLAG, 0);
 	set_flag(H_FLAG, (*a == 0xFF) ? 1 : 0);
@@ -380,7 +508,7 @@ void op_dec_8(void *_a, void *_b) {
 
 void op_dec_16(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
-	*a--;
+	(*a)--;
 }
 
 void op_ccf(void *_a, void *_b) {
@@ -443,27 +571,26 @@ void op_rra(void *_a, void *_b) {
 	set_flag(H_FLAG, 0);
 	set_flag(C_FLAG, b0);
 }
-
+// !! According to documentation, interrupts are enabled / disabled
+// after the instruction next to di/ei is executed.
 void op_di(void *_a, void *_b) {
-        // TODO
-	// Disable interrupts
+	ime_flag = 0;
 }
 
 void op_ei(void *_a, void *_b) {
-        // TODO
-	// Enable interrupts
+	ime_flag = 1;
 }
 
 void op_push(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
-	mem_write_16(*SP, *a);
 	*SP -= 2;
+	mem_write_16(*SP, *a);
 }
 
 void op_pop(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
-	*SP += 2;
 	*a = mem_read_16(*SP);
+	*SP += 2;
 }
 
 void op_jp(void *_a, void *_b) {
@@ -549,7 +676,6 @@ void op_ret(void *_a, void *_b) {
 }
 
 void op_reti(void *_a, void *_b) {
-	// TODO
         op_pop(&PC, NULL);
 	op_ei(NULL, NULL);
 }
@@ -561,16 +687,51 @@ void op_rst(void *_a, void *_b) {
 }
 
 void op_cpl(void *_a, void *_b) {
-	*A = ~*A;
+	*A = ~(*A);
 	set_flag(N_FLAG, 1);
 	set_flag(H_FLAG, 1);
 }
 
+// http://www.z80.info/z80syntx.htm#DAA
+
+#define BCD_COND(c_flag, up_from, up_to, h_flag, lo_from, lo_to)	\
+	(up >= up_from && up <= up_to &&				\
+		lo >= lo_from && lo <= lo_to &&				\
+		get_flag(C_FLAG) == c_flag &&				\
+	 get_flag(H_FLAG) == h_flag)		
+		
 void op_daa(void *_a, void *_b) {
-	// TODO
-        //set_flag_Z(a);
-	//set_flag(H_FLAG, 0);
-	//set_flag(C_FLAG, 0);
+	uint8_t *a = (uint8_t*)_a;
+	uint8_t up = (*a & 0xF0) >> 4;
+	uint8_t lo = *a & 0x0F;
+	if (BCD_COND(0, 0, 0x9, 0, 0x0, 0x9)) {
+		set_flag(C_FLAG, 0);
+	} else if (BCD_COND(0, 0x0, 0x8, 0, 0xA, 0xF) ||
+		   BCD_COND(0, 0x0, 0x9, 1, 0x0, 0x3)) {
+		*a += 0x06;
+		set_flag(C_FLAG, 0);
+	} else if (BCD_COND(0, 0xA, 0xF, 0, 0x0, 0x9) ||
+		   BCD_COND(1, 0x0, 0x2, 0, 0x0, 0x9)) {
+		*a += 0x60;
+		set_flag(C_FLAG, 1);
+	} else if (BCD_COND(0, 0x9, 0xF, 0, 0xA, 0xF) ||
+		   BCD_COND(0, 0xA, 0xF, 1, 0x0, 0x3) ||
+		   BCD_COND(1, 0x0, 0x2, 0, 0xA, 0xF) ||
+		   BCD_COND(1, 0x0, 0x3, 1, 0x0, 0x3)) {
+		*a += 0x66;
+		set_flag(C_FLAG, 1);
+	} else if (BCD_COND(0, 0x0, 0x8, 1, 0x6, 0xF)) {
+		*a += 0xFA;
+		set_flag(C_FLAG, 0);
+	} else if (BCD_COND(1, 0x7, 0xF, 0, 0x0, 0x9)) {
+		*a += 0xA0;
+		set_flag(C_FLAG, 1);
+	} else if (BCD_COND(1, 0x6, 0xF, 1, 0x6, 0xF)) {
+		*a += 0x9A;
+		set_flag(C_FLAG, 1);
+	}
+        set_flag_Z(a);
+	set_flag(H_FLAG, 0);
 }
 
 void op_stop(void *_a, void *_b) {
@@ -720,6 +881,8 @@ void op_set(void *_a, void *_b) {
 	ops[i].length = l;			\
 	ops[i].cycles[0] = c0;			\
 	ops[i].cycles[1] = c1;
+
+// !! The desc parameter is stored in the stack of set_opcodes function :S
 
 void set_opcodes() {
 SET_OP(0x00, "NOP", op_nop, NULL, NULL, NONE, 1, 4, 0);
@@ -991,7 +1154,7 @@ SET_OP(0xFF, "RST 38H", op_rst, &C_38H, NULL, NONE, 1, 16, 0);
 	ops_cb[i].cycles[1] = c1;
 
 void set_opcodes_cb() {
-	SET_OP_CB(0x00, "RLC B", op_rlc, B, NULL, NONE, 2, 8, 0);
+SET_OP_CB(0x00, "RLC B", op_rlc, B, NULL, NONE, 2, 8, 0);
 SET_OP_CB(0x01, "RLC C", op_rlc, C, NULL, NONE, 2, 8, 0);
 SET_OP_CB(0x02, "RLC D", op_rlc, D, NULL, NONE, 2, 8, 0);
 SET_OP_CB(0x03, "RLC E", op_rlc, E, NULL, NONE, 2, 8, 0);
@@ -1133,7 +1296,7 @@ SET_OP_CB(0x8A, "RES 1,D", op_res, D, &C_1, NONE, 2, 8, 0);
 SET_OP_CB(0x8B, "RES 1,E", op_res, E, &C_1, NONE, 2, 8, 0);
 SET_OP_CB(0x8C, "RES 1,H", op_res, H, &C_1, NONE, 2, 8, 0);
 SET_OP_CB(0x8D, "RES 1,L", op_res, L, &C_1, NONE, 2, 8, 0);
-SET_OP_CB(0x8E, "RES 1,(HL)", op_res, HL, &C_1, MEM_RW_16, 2, 16, 0);
+SET_OP_CB(0x8E, "RES 1,HL", op_res, HL, &C_1, MEM_RW_16, 2, 16, 0);
 SET_OP_CB(0x8F, "RES 1,A", op_res, A, &C_1, NONE, 2, 8, 0);
 SET_OP_CB(0x90, "RES 2,B", op_res, B, &C_2, NONE, 2, 8, 0);
 SET_OP_CB(0x91, "RES 2,C", op_res, C, &C_2, NONE, 2, 8, 0);
@@ -1254,4 +1417,5 @@ void cpu_init() {
 	set_opcodes_cb();
 	PC = 0;
 	*F = 0x00;
+	ime_flag = 1;
 }

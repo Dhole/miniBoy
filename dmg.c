@@ -59,3 +59,7 @@ void dmg_init() {
 	cpu_init();
 	cpu_test();
 }
+
+void dmg_run() {
+	
+}
