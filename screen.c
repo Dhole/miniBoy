@@ -12,14 +12,14 @@
 
 // IO Ports
 
-#define IO_JOYPAD 0xFF00
+#define IO_JOYPAD  0xFF00
 #define IO_SIODATA 0xFF01
 #define IO_SIOCONT 0xFF02
 #define IO_DIVIDER 0xFF04
 #define IO_TIMECNT 0xFF05
 #define IO_TIMEMOD 0xFF06
 #define IO_TIMCONT 0xFF07
-#define IO_IFLAGS 0xFF0F
+#define IO_IFLAGS  0xFF0F
 // Sound registers
 #define IO_SNDREG10 0xFF10
 #define IO_SNDREG11 0xFF12
@@ -70,10 +70,10 @@
 #define MASK_IO_LCDCONT_OBJ_Display_Enable             0x01 << 1
 #define MASK_IO_LCDCONT_BG_Display                     0x01 << 0
 
-#define OPT_Window_Tile_Map_9800_9BFF 0
-#define OPT_Window_Tile_Map_9C00_9FFF 1
-#define OPT_BGWindow_Tile_Data_8800_97FF 0
-#define OPT_BGWindow_Tile_Data_8000_8FFF 1
+#define OPT_Window_Tile_Map_9800_9BFF     0
+#define OPT_Window_Tile_Map_9C00_9FFF     1
+#define OPT_BGWindow_Tile_Data_8800_97FF  0
+#define OPT_BGWindow_Tile_Data_8000_8FFF  1
 #define OPT_BG_Tile_Map_Display_9800_9BFF 0
 #define OPT_BG_Tile_Map_Display_9C00_9FFF 1
 
