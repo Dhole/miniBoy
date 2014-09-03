@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include "memory.h"
+#include "lr35902.h"
 #include "linenoise/linenoise.h"
 
-#define MEM_SIZE 0x10000
+//#define MEM_SIZE 0x10000
 
 const char *PROMPT = "miniBoy> ";
 const int ARG_LEN = 16;
@@ -125,11 +127,13 @@ int run_com(command_t *com) {
 	if (strncmp(name, "help", ARG_LEN) == 0 || name[0] == 'h') {
 		com_help();
 	} else if (strncmp(name, "step", ARG_LEN) == 0 || name[0] == 's') {
-		printf("step!\n");
+		//printf("step!\n");
+		cpu_step();
 	} else if (strncmp(name, "run", ARG_LEN) == 0) {
 		printf("run!\n");
 	} else if (strncmp(name, "regs", ARG_LEN) == 0 || name[0] == 'r') {
-		printf("regs!\n");
+		//printf("regs!\n");
+		cpu_dump_reg();
 	} else if (strncmp(name, "break", ARG_LEN) == 0 || name[0] == 'b') {
 		com_break(com->arg_a);
 	} else if (strncmp(name, "clear", ARG_LEN) == 0) {
@@ -137,7 +141,8 @@ int run_com(command_t *com) {
 	} else if (strncmp(name, "continue", ARG_LEN) == 0 || name[0] == 'c') {
 		printf("continue!\n");
 	} else if (strncmp(name, "memory", ARG_LEN) == 0 || name[0] == 'm') {
-		printf("memory!\n");
+		//printf("memory!\n");
+		mem_dump(com->arg_a, com->arg_b);
 	} else if (strncmp(name, "quit", ARG_LEN) == 0 || name[0] == 'q') {
 		return -2;
 	} else {
@@ -147,7 +152,7 @@ int run_com(command_t *com) {
 	return 0;
 }
 
-int main(int argc, char **argv) {
+int debug_run() {
 	char *line;
 	command_t com;
 

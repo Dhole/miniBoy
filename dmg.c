@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "lr35902.h"
 #include "memory.h"
+#include "debugger.h"
 
 #define MAX_BIOS_SIZE 0x100
 #define MAX_ROM_SIZE 0x400000
@@ -57,7 +58,8 @@ void dmg_unload_rom() {
 
 void dmg_init() {
 	cpu_init();
-	cpu_test();
+	//cpu_test();
+	debug_run();
 }
 
 void dmg_run() {

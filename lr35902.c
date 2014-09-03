@@ -205,19 +205,19 @@ uint8_t disas_op(uint16_t off) {
 		strncpy(desc, inst.desc, 32);
 		if (inst.length > 1) {
 			if (strstr(desc, "d8") != NULL) {
-				desc_tmp = replace_str(desc, "d8", "$0x%02x");
+				desc_tmp = replace_str(desc, "d8", "$0x%02X");
 				sprintf(desc, desc_tmp, arg_8);
 			} else if (strstr(desc, "r8") != NULL) {
-				desc_tmp = replace_str(desc, "r8", "0x%04x");
+				desc_tmp = replace_str(desc, "r8", "0x%04X");
 				sprintf(desc, desc_tmp, off + 2 + (int8_t)arg_8);
 			} else if (strstr(desc, "a8") != NULL) {
-				desc_tmp = replace_str(desc, "a8", "0x%04x");
+				desc_tmp = replace_str(desc, "a8", "0x%04X");
 				sprintf(desc, desc_tmp, 0xFF00 + arg_8);
 			} else if (strstr(desc, "d16") != NULL) {
-				desc_tmp = replace_str(desc, "d16", "$0x%04x");
+				desc_tmp = replace_str(desc, "d16", "$0x%04X");
 				sprintf(desc, desc_tmp, arg_16);
 			} else if (strstr(desc, "a16") != NULL) {
-				desc_tmp = replace_str(desc, "a16", "$0x%04x");
+				desc_tmp = replace_str(desc, "a16", "$0x%04X");
 				sprintf(desc, desc_tmp, arg_16);
 			}
 			free(desc_tmp);
@@ -315,6 +315,9 @@ void cpu_test() {
 			break;
 		case 'r':
 			cpu_dump_reg();
+			break;
+		case 'i':
+			mem_dump_io_regs();
 			break;
 		case 'm':
 			//mem_dump(0xFFF0, 0xFFFF);
