@@ -2,7 +2,7 @@
 
 import sys
 
-#        SET_OP(0x60, "LD H,B", op_ld_8r_8r, H, B, "NONE", 1, 4, 0);
+#        SET_OP(0x60, "LD H,B", op_ld_8r_8r, regs.H, regs.B, "NONE", 1, 4, 0);
 model = 'SET_OP(0x%02X, "%s", %s, %s, %s, %s, %s, %s, %s);'
 
 
@@ -133,7 +133,11 @@ for line in sys.stdin:
 			op = "op_ldhl"
 			a = "SP"
 			b = "imm_8"
-		
+
+		if (a[0] != "i" and a[0] != "&" and a[0] != "N"):
+                        a = "regs." + a
+		if (b[0] != "i" and b[0] != "&" and b[0] != "N"):
+                        b = "regs." + b
 		
 		cycl = line[-5].split("/")
 		if (len(cycl) == 2):

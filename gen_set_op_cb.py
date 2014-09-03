@@ -35,6 +35,11 @@ for line in sys.stdin:
 		
 		if (b != "NULL"):
 			a, b = b, "&C_" + a
+			
+		if (a[0] != "i" and a[0] != "&" and a[0] != "N"):
+                        a = "regs." + a
+		if (b[0] != "i" and b[0] != "&" and b[0] != "N"):
+                        b = "regs." + b
 				
 		
 		cycl = line[-5].split("/")
