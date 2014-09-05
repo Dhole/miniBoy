@@ -4,8 +4,15 @@
 #include <stdlib.h>
 #include "memory.h"
 #include "string_fun.h"
+#include "io_regs.h"
 
 #define OP(n) ops[n].handler(ops[n].a, ops[n].b);
+
+#define ADDR_INT_VBlank                 0x0040
+#define ADDR_INT_LCDSTAT_Int            0x0048
+#define ADDR_INT_Timer_Overflow         0x0050
+#define ADDR_INT_End_Serial_IO_Transfer 0x0058
+#define ADDR_INT_High_to_Low_P10_P13    0x0060
 
 /*
 static uint16_t SP_val, PC;
@@ -32,24 +39,6 @@ typedef struct {
 	uint8_t ime_flag;
 } regs_t;
 static regs_t regs;
-
-void init_regs() {
-	regs.SP = &regs.SP_val;
-	
-	regs.AF = (uint16_t*)&regs.r_data[0];
-	regs.BC = (uint16_t*)&regs.r_data[2];
-	regs.DE = (uint16_t*)&regs.r_data[4];
-	regs.HL = (uint16_t*)&regs.r_data[6];
-
-	regs.F = (uint8_t*)&regs.r_data[0];
-	regs.A = (uint8_t*)&regs.r_data[1];
-	regs.C = (uint8_t*)&regs.r_data[2];
-	regs.B = (uint8_t*)&regs.r_data[3];
-	regs.E = (uint8_t*)&regs.r_data[4];
-	regs.D = (uint8_t*)&regs.r_data[5];
-	regs.L = (uint8_t*)&regs.r_data[6];
-	regs.H = (uint8_t*)&regs.r_data[7];
-}
 
 typedef enum {
 	Z_FLAG = 1 << 7,
@@ -101,6 +90,30 @@ typedef struct {
 static inst_t ops[256];
 static inst_t ops_cb[256];
 
+void init_regs() {
+	regs.SP = &regs.SP_val;
+	
+	regs.AF = (uint16_t*)&regs.r_data[0];
+	regs.BC = (uint16_t*)&regs.r_data[2];
+	regs.DE = (uint16_t*)&regs.r_data[4];
+	regs.HL = (uint16_t*)&regs.r_data[6];
+
+	// This works on little endian
+	// It may not work on big endian!!!
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+	regs.F = (uint8_t*)&regs.r_data[0];
+	regs.A = (uint8_t*)&regs.r_data[1];
+	regs.C = (uint8_t*)&regs.r_data[2];
+	regs.B = (uint8_t*)&regs.r_data[3];
+	regs.E = (uint8_t*)&regs.r_data[4];
+	regs.D = (uint8_t*)&regs.r_data[5];
+	regs.L = (uint8_t*)&regs.r_data[6];
+	regs.H = (uint8_t*)&regs.r_data[7];
+#else
+#error "Big endian not supported yet"
+#endif
+}
+
 void set_flag(flag_t f, uint8_t v) {
 	if (v) {
 		*regs.F |= f;
@@ -119,225 +132,6 @@ void set_flag_Z(uint8_t *a) {
 
 uint8_t get_flag(flag_t f) {
 	return (*regs.F & f) > 0 ? 1 : 0;
-}
-
-void exec_op(uint8_t n) {
-	//printf("0x%04X : %02X -> %s\n", PC, n, ops[n].desc);
-	
-	switch (ops[n].length) {
-	case 1: break;
-	case 2: *imm_8 = mem_read_8(regs.PC + 1); break;
-	case 3: *imm_16 = mem_read_16(regs.PC + 1); break;
-	}
-	regs.PC += ops[n].length;
-
-	switch (ops[n].opt) {
-	case MEM_R_8:
-		tmp = mem_read_8(*(uint8_t*)ops[n].b + 0xFF00);
-		ops[n].handler(ops[n].a, &tmp);
-		break;
-	case MEM_R_16:
-		tmp = mem_read_8(*(uint16_t*)ops[n].b);
-		ops[n].handler(ops[n].a, &tmp);
-		break;
-	case MEM_W_8:
-		ops[n].handler(&tmp, ops[n].b);
-		mem_write_8(*(uint8_t*)ops[n].a + 0xFF00, tmp);
-		break;
-	case MEM_W_16:
-		ops[n].handler(&tmp, ops[n].b);
-		mem_write_8(*(uint16_t*)ops[n].a, tmp);
-		break;
-	case NONE:
-		ops[n].handler(ops[n].a, ops[n].b);
-		break;
-	}
-}
-
-void exec_op_cb(uint8_t n) {
-	//printf("0x%04X : %02X -> %s\n", PC - 1, n, ops_cb[n].desc);
-	
-	switch (ops_cb[n].opt) {
-	case MEM_R_16:
-		tmp = mem_read_8(*(uint16_t*)ops_cb[n].b);
-		ops_cb[n].handler(ops_cb[n].a, &tmp);
-		break;
-	case MEM_W_16:
-		ops_cb[n].handler(&tmp, ops_cb[n].b);
-		mem_write_8(*(uint16_t*)ops_cb[n].a, tmp);
-		break;
-	case MEM_RW_16:
-		tmp = mem_read_8(*(uint16_t*)ops_cb[n].a);
-		ops_cb[n].handler(&tmp, ops_cb[n].b);
-		mem_write_8(*(uint16_t*)ops_cb[n].a, tmp);
-		break;
-	case NONE:
-		ops_cb[n].handler(ops_cb[n].a, ops_cb[n].b);
-		break;
-	}
-}
-
-uint8_t disas_op(uint16_t off) {
-	uint8_t op;
-	inst_t inst;
-	uint8_t arg_8;
-	uint16_t arg_16;
-	char code[16];
-	char desc[32];
-	char *desc_tmp;
-	
-	op = mem_read_8(off);
-	if (op == 0xCB) {
-		arg_8 = mem_read_8(off + 1);
-		inst = ops_cb[arg_8];
-		sprintf(code, "%02x %02x   ", op, arg_8);
-		strncpy(desc, inst.desc, 32);
-	} else {
-		inst = ops[op];
-		if (inst.length == 2) {
-			arg_8 = mem_read_8(off + 1);
-			sprintf(code, "%02x %02x   ", op, arg_8);
-		} else if (inst.length == 3) {
-			arg_16 = mem_read_16(off + 1);
-			sprintf(code, "%02x %02x %02x",
-				op, arg_16 & 0x00FF, (arg_16 & 0xFF00) >> 8);
-		} else {
-			sprintf(code, "%02x      ", op);
-		}
-		strncpy(desc, inst.desc, 32);
-		if (inst.length > 1) {
-			if (strstr(desc, "d8") != NULL) {
-				desc_tmp = replace_str(desc, "d8", "$0x%02X");
-				sprintf(desc, desc_tmp, arg_8);
-			} else if (strstr(desc, "r8") != NULL) {
-				desc_tmp = replace_str(desc, "r8", "0x%04X");
-				sprintf(desc, desc_tmp, off + 2 + (int8_t)arg_8);
-			} else if (strstr(desc, "a8") != NULL) {
-				desc_tmp = replace_str(desc, "a8", "0x%04X");
-				sprintf(desc, desc_tmp, 0xFF00 + arg_8);
-			} else if (strstr(desc, "d16") != NULL) {
-				desc_tmp = replace_str(desc, "d16", "$0x%04X");
-				sprintf(desc, desc_tmp, arg_16);
-			} else if (strstr(desc, "a16") != NULL) {
-				desc_tmp = replace_str(desc, "a16", "$0x%04X");
-				sprintf(desc, desc_tmp, arg_16);
-			}
-			free(desc_tmp);
-		}
-	}
-	printf("0x%04X: %s   %s\n", off, code, desc);
-	return inst.length;
-}
-
-int cpu_step() {
-	uint8_t op;
-	//uint8_t d8, a8, r8;
-	//uint16_t d16, a16;
-
-	op = mem_read_8(regs.PC);
-	
-	exec_op(op);
-
-	// Handle interrupts
-	if (regs.ime_flag) {
-		
-	}
-
-	if (op == 0xCB) {
-		return ops_cb[mem_read_8(regs.PC + 1)].cycles[0];
-	} else {
-		if (ops[op].cycles[1]) {
-			if (ext_cycles) {
-				ext_cycles = 0;
-				return ops[op].cycles[1];
-			} else {
-				return ops[op].cycles[0];
-			}
-		} else {
-			return ops[op].cycles[0];
-		}
-	}
-	
-}
-
-void cpu_dump_reg() {
-	printf("PC: %04x\n", regs.PC);
-	printf("SP: %04x\n", *regs.SP);
-	printf("A  F\n");
-	printf("%02x %02x\n", *regs.A, *regs.F);
-	printf("B  C\n");
-	printf("%02x %02x\n", *regs.B, *regs.C);
-	printf("D  E\n");
-	printf("%02x %02x\n", *regs.D, *regs.E);
-	printf("H  L\n");
-	printf("%02x %02x\n", *regs.H, *regs.L);
-	printf("Z N H C\n");
-	printf("%d %d %d %d\n", (*regs.F & Z_FLAG) >> 7, (*regs.F & N_FLAG) >> 6,
-	       (*regs.F & H_FLAG) >> 5, (*regs.F & C_FLAG) >> 4);
-}
-
-void cpu_test() {
-	char line[128];
-	char *a = NULL, *b = NULL, *c = NULL;
-	uint16_t vb = 0, vc = 0;
-	int i;
-	////
-	uint16_t off = 0;
-	
-	while (1) {
-		printf("> ");
-		fgets(line, 128, stdin);
-		a = strtok(line, " ");
-		if (b = strtok(NULL, " ")) {
-			vb = strtol(b, NULL, 16);
-		} else {
-			vb = 0;
-		}
-		if (c = strtok(NULL, " ")) {
-			vc = strtol(c, NULL, 16);
-		} else {
-			vc = 0;
-		}
-		switch (a[0]) {
-		case 's':
-			for (i = 0; i < vb; i++) {
-				disas_op(regs.PC);
-				cpu_step();
-			}
-			break;
-		case 'b':
-			if (vb == 0) {
-				break;
-			}
-			printf("Set breakpoint at 0x%04X\n", vb);
-			while (regs.PC != vb) {
-				disas_op(regs.PC);
-				cpu_step();
-			}
-			break;
-		case 'r':
-			cpu_dump_reg();
-			break;
-		case 'i':
-			mem_dump_io_regs();
-			break;
-		case 'm':
-			//mem_dump(0xFFF0, 0xFFFF);
-			mem_dump(vb, vc);
-			break;
-		case 'd':
-			for (i = 0; i < 100; i++) {
-				off += disas_op(off);
-			}
-			
-			break;
-		default:
-			disas_op(regs.PC);
-			cpu_step();
-			break;
-		}
-		
-	}
 }
 
 void op_ld_8(void *_a, void *_b) {
@@ -385,66 +179,78 @@ void op_halt(void *_a, void *_b) {
 void op_add_8(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
+
+	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, (*a > 0xFF - *b) ? 1 : 0);
+	
 	*a += *b;
 
 	set_flag_Z(a);
 	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
-	set_flag(C_FLAG, (*a > 0xFF - *b) ? 1 : 0);
 }
 
 void op_add_16(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
 	uint16_t *b = (uint16_t*)_b;
+
+	set_flag(H_FLAG, (*a & 0x0FFF > 0x0FFF - *b & 0x0FFF) ? 1 : 0);
+	set_flag(C_FLAG, (*a & 0xFFFF > 0xFFFF - *b & 0xFFFF) ? 1 : 0);
+	
 	*a += *b;
 
 	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, (*a & 0x0FFF > 0x0FFF - *b & 0x0FFF) ? 1 : 0);
-	set_flag(C_FLAG, (*a & 0xFFFF > 0xFFFF - *b & 0xFFFF) ? 1 : 0);
 }
 
 void op_addsp(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
 	int8_t *b = (int8_t*)_b;
+
+	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, (*a & 0xFF > 0xFF - *b) ? 1 : 0);
+	
 	*a += *b;
 
 	set_flag(Z_FLAG, 0);
 	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
-	set_flag(C_FLAG, (*a & 0xFF > 0xFF - *b) ? 1 : 0);
 }
 
 void op_adc(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
+	// CHECK THIS!!!
+	set_flag(H_FLAG, (*b & 0x0F < *b & 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, (*b > 0xFF - *b) ? 1 : 0);
+	
 	*a += *b + get_flag(C_FLAG);
 
         set_flag_Z(a);
 	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, (*a & 0x0F < *b & 0x0F) ? 1 : 0);
-	set_flag(C_FLAG, (*a > 0xFF - *b) ? 1 : 0);
 }
 
 void op_sub(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
+
+	set_flag(H_FLAG, (*a & 0x0F < *b & 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
+	
 	*a -= *b;
 
         set_flag_Z(a);
-	set_flag(N_FLAG, 0);       
-	set_flag(H_FLAG, (*a & 0x0F < *b & 0x0F) ? 1 : 0);
-	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
+	set_flag(N_FLAG, 1);       
 }
 
 void op_sbc(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
+	// CHECK THIS!!!
+	set_flag(H_FLAG, (*a & 0x0F < *b & 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
+	
 	*a -= *b + get_flag(C_FLAG);
 
         set_flag_Z(a);
-	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, (*a & 0x0F < *b & 0x0F) ? 1 : 0);
-	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
+	set_flag(N_FLAG, 1);
 }
 
 void op_and(void *_a, void *_b) {
@@ -1424,4 +1230,255 @@ void cpu_init() {
 	regs.PC = 0;
 	*regs.F = 0x00;
 	regs.ime_flag = 1;
+}
+
+void exec_op(uint8_t n) {
+	//printf("0x%04X : %02X -> %s\n", PC, n, ops[n].desc);
+	
+	switch (ops[n].length) {
+	case 1: break;
+	case 2: *imm_8 = mem_read_8(regs.PC + 1); break;
+	case 3: *imm_16 = mem_read_16(regs.PC + 1); break;
+	}
+	regs.PC += ops[n].length;
+
+	switch (ops[n].opt) {
+	case MEM_R_8:
+		tmp = mem_read_8(*(uint8_t*)ops[n].b + 0xFF00);
+		ops[n].handler(ops[n].a, &tmp);
+		break;
+	case MEM_R_16:
+		tmp = mem_read_8(*(uint16_t*)ops[n].b);
+		ops[n].handler(ops[n].a, &tmp);
+		break;
+	case MEM_W_8:
+		ops[n].handler(&tmp, ops[n].b);
+		mem_write_8(*(uint8_t*)ops[n].a + 0xFF00, tmp);
+		break;
+	case MEM_W_16:
+		ops[n].handler(&tmp, ops[n].b);
+		mem_write_8(*(uint16_t*)ops[n].a, tmp);
+		break;
+	case NONE:
+		ops[n].handler(ops[n].a, ops[n].b);
+		break;
+	}
+}
+
+void exec_op_cb(uint8_t n) {
+	//printf("0x%04X : %02X -> %s\n", PC - 1, n, ops_cb[n].desc);
+	
+	switch (ops_cb[n].opt) {
+	case MEM_R_16:
+		tmp = mem_read_8(*(uint16_t*)ops_cb[n].b);
+		ops_cb[n].handler(ops_cb[n].a, &tmp);
+		break;
+	case MEM_W_16:
+		ops_cb[n].handler(&tmp, ops_cb[n].b);
+		mem_write_8(*(uint16_t*)ops_cb[n].a, tmp);
+		break;
+	case MEM_RW_16:
+		tmp = mem_read_8(*(uint16_t*)ops_cb[n].a);
+		ops_cb[n].handler(&tmp, ops_cb[n].b);
+		mem_write_8(*(uint16_t*)ops_cb[n].a, tmp);
+		break;
+	case NONE:
+		ops_cb[n].handler(ops_cb[n].a, ops_cb[n].b);
+		break;
+	}
+}
+
+uint8_t disas_op(uint16_t off) {
+	uint8_t op;
+	inst_t inst;
+	uint8_t arg_8;
+	uint16_t arg_16;
+	char code[16];
+	char desc[32];
+	char *desc_tmp;
+	
+	op = mem_read_8(off);
+	if (op == 0xCB) {
+		arg_8 = mem_read_8(off + 1);
+		inst = ops_cb[arg_8];
+		sprintf(code, "%02x %02x   ", op, arg_8);
+		strncpy(desc, inst.desc, 32);
+	} else {
+		inst = ops[op];
+		if (inst.length == 2) {
+			arg_8 = mem_read_8(off + 1);
+			sprintf(code, "%02x %02x   ", op, arg_8);
+		} else if (inst.length == 3) {
+			arg_16 = mem_read_16(off + 1);
+			sprintf(code, "%02x %02x %02x",
+				op, arg_16 & 0x00FF, (arg_16 & 0xFF00) >> 8);
+		} else {
+			sprintf(code, "%02x      ", op);
+		}
+		strncpy(desc, inst.desc, 32);
+		if (inst.length > 1) {
+			if (strstr(desc, "d8") != NULL) {
+				desc_tmp = replace_str(desc, "d8", "$0x%02X");
+				sprintf(desc, desc_tmp, arg_8);
+			} else if (strstr(desc, "r8") != NULL) {
+				desc_tmp = replace_str(desc, "r8", "0x%04X");
+				sprintf(desc, desc_tmp, off + 2 + (int8_t)arg_8);
+			} else if (strstr(desc, "a8") != NULL) {
+				desc_tmp = replace_str(desc, "a8", "0x%04X");
+				sprintf(desc, desc_tmp, 0xFF00 + arg_8);
+			} else if (strstr(desc, "d16") != NULL) {
+				desc_tmp = replace_str(desc, "d16", "$0x%04X");
+				sprintf(desc, desc_tmp, arg_16);
+			} else if (strstr(desc, "a16") != NULL) {
+				desc_tmp = replace_str(desc, "a16", "$0x%04X");
+				sprintf(desc, desc_tmp, arg_16);
+			}
+			free(desc_tmp);
+		}
+	}
+	printf("0x%04X: %s   %s\n", off, code, desc);
+	return inst.length;
+}
+
+int handle_interrupts() {
+	uint8_t ienable = mem_read_8(IO_IENABLE);
+	uint8_t iflags = mem_read_8(IO_IFLAGS);
+
+	if (!regs.ime_flag) {
+		return 0;
+	}
+		
+	if (ienable & iflags & MASK_IO_INT_VBlank) {
+		op_push(&regs.PC, NULL);
+		regs.PC = ADDR_INT_VBlank;
+		mem_write_8(IO_IFLAGS, iflags & ~MASK_IO_INT_VBlank);
+	} else if (ienable & iflags & MASK_IO_INT_LCDSTAT_Int) {
+		op_push(&regs.PC, NULL);
+		regs.PC = ADDR_INT_LCDSTAT_Int;
+		mem_write_8(IO_IFLAGS, iflags & ~MASK_IO_INT_LCDSTAT_Int);
+	} else if (ienable & iflags & MASK_IO_INT_Timer_Overflow) {
+		op_push(&regs.PC, NULL);
+		regs.PC = ADDR_INT_Timer_Overflow;
+		mem_write_8(IO_IFLAGS, iflags & ~MASK_IO_INT_Timer_Overflow);
+	} else if (ienable & iflags & MASK_IO_INT_End_Serial_IO_Transfer) {
+		op_push(&regs.PC, NULL);
+		regs.PC = ADDR_INT_End_Serial_IO_Transfer;
+		mem_write_8(IO_IFLAGS, iflags & ~MASK_IO_INT_End_Serial_IO_Transfer);
+	} else if (ienable & iflags & MASK_IO_INT_High_to_Low_P10_P13) {
+		op_push(&regs.PC, NULL);
+		regs.PC = ADDR_INT_High_to_Low_P10_P13;
+		mem_write_8(IO_IFLAGS, iflags & ~MASK_IO_INT_High_to_Low_P10_P13);
+	}
+	return 20;
+}
+
+int cpu_step() {
+	uint8_t op;
+	uint8_t int_cycles;
+	//uint8_t d8, a8, r8;
+	//uint16_t d16, a16;
+
+	op = mem_read_8(regs.PC);
+	
+	exec_op(op);
+
+        if (int_cycles = handle_interrupts()) {
+		return int_cycles;
+	}
+
+	if (op == 0xCB) {
+		return ops_cb[mem_read_8(regs.PC + 1)].cycles[0];
+	} else {
+		if (ops[op].cycles[1]) {
+			if (ext_cycles) {
+				ext_cycles = 0;
+				return ops[op].cycles[1];
+			} else {
+				return ops[op].cycles[0];
+			}
+		} else {
+			return ops[op].cycles[0];
+		}
+	}
+	
+}
+
+void cpu_dump_reg() {
+	printf("PC: %04x\n", regs.PC);
+	printf("SP: %04x\n", *regs.SP);
+	printf("A  F\n");
+	printf("%02x %02x\n", *regs.A, *regs.F);
+	printf("B  C\n");
+	printf("%02x %02x\n", *regs.B, *regs.C);
+	printf("D  E\n");
+	printf("%02x %02x\n", *regs.D, *regs.E);
+	printf("H  L\n");
+	printf("%02x %02x\n", *regs.H, *regs.L);
+	printf("Z N H C\n");
+	printf("%d %d %d %d\n", (*regs.F & Z_FLAG) >> 7, (*regs.F & N_FLAG) >> 6,
+	       (*regs.F & H_FLAG) >> 5, (*regs.F & C_FLAG) >> 4);
+}
+
+void cpu_test() {
+	char line[128];
+	char *a = NULL, *b = NULL, *c = NULL;
+	uint16_t vb = 0, vc = 0;
+	int i;
+	////
+	uint16_t off = 0;
+	
+	while (1) {
+		printf("> ");
+		fgets(line, 128, stdin);
+		a = strtok(line, " ");
+		if (b = strtok(NULL, " ")) {
+			vb = strtol(b, NULL, 16);
+		} else {
+			vb = 0;
+		}
+		if (c = strtok(NULL, " ")) {
+			vc = strtol(c, NULL, 16);
+		} else {
+			vc = 0;
+		}
+		switch (a[0]) {
+		case 's':
+			for (i = 0; i < vb; i++) {
+				disas_op(regs.PC);
+				cpu_step();
+			}
+			break;
+		case 'b':
+			if (vb == 0) {
+				break;
+			}
+			printf("Set breakpoint at 0x%04X\n", vb);
+			while (regs.PC != vb) {
+				disas_op(regs.PC);
+				cpu_step();
+			}
+			break;
+		case 'r':
+			cpu_dump_reg();
+			break;
+		case 'i':
+			mem_dump_io_regs();
+			break;
+		case 'm':
+			//mem_dump(0xFFF0, 0xFFFF);
+			mem_dump(vb, vc);
+			break;
+		case 'd':
+			for (i = 0; i < 100; i++) {
+				off += disas_op(off);
+			}
+			
+			break;
+		default:
+			disas_op(regs.PC);
+			cpu_step();
+			break;
+		}
+		
+	}
 }
