@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "lr35902.h"
 #include "memory.h"
 #include "string_fun.h"
 #include "io_regs.h"
@@ -14,54 +15,8 @@
 #define ADDR_INT_End_Serial_IO_Transfer 0x0058
 #define ADDR_INT_High_to_Low_P10_P13    0x0060
 
-/*
-static uint16_t SP_val, PC;
-static uint16_t *SP = &SP_val;
-static uint8_t regs_data[8];
-static uint16_t *AF = (uint16_t*)&regs_data[0], *BC = (uint16_t*)&regs_data[2],
-	*DE = (uint16_t*)&regs_data[4], *HL = (uint16_t*)&regs_data[6];
 
-static uint8_t *F = (uint8_t*)&regs_data[0], *A = (uint8_t*)&regs_data[1],
-	*C = (uint8_t*)&regs_data[2], *B = (uint8_t*)&regs_data[3],
-	*E = (uint8_t*)&regs_data[4], *D = (uint8_t*)&regs_data[5],
-	*L = (uint8_t*)&regs_data[6], *H = (uint8_t*)&regs_data[7];
-
-static uint8_t ime_flag;
-*/
-
-typedef struct {
-	uint16_t PC, SP_val;
-	uint16_t *SP;
-	uint8_t r_data[8];
-	uint16_t *AF , *BC, *DE, *HL;
-	uint8_t *F, *A, *C, *B, *E, *D, *L, *H;
-
-	uint8_t ime_flag;
-} regs_t;
 static regs_t regs;
-
-typedef enum {
-	Z_FLAG = 1 << 7,
-	N_FLAG = 1 << 6,
-	H_FLAG = 1 << 5,
-	C_FLAG = 1 << 4,
-} flag_t;
-
-typedef enum {
-	MEM_R_8,
-	MEM_R_16,
-	MEM_W_8,
-	MEM_W_16,
-	MEM_RW_16,
-	NONE,
-} opt_t;
-
-typedef enum {
-	COND_NZ = 0,
-	COND_NC = 1,
-	COND_Z = 2,
-	COND_C = 3,
-} cond_t;
 
 // Some constants used as parameters
 static uint8_t C_00H = 0x00, C_08H = 0x08, C_10H = 0x10, C_18H = 0x18,
@@ -77,18 +32,12 @@ static uint8_t *imm_8 = (uint8_t*)&imm_val;
 static uint8_t tmp;
 static uint8_t ext_cycles = 0;
 
-typedef struct {
-	char *desc;
-	void (*handler)(void*, void*);
-	void *a;
-	void *b;
-	opt_t opt;
-	uint8_t length;
-	uint8_t cycles[2];
-} inst_t;
-
 static inst_t ops[256];
 static inst_t ops_cb[256];
+
+regs_t *cpu_get_regs() {
+	return &regs;
+}
 
 void init_regs() {
 	regs.SP = &regs.SP_val;
@@ -112,6 +61,62 @@ void init_regs() {
 #else
 #error "Big endian not supported yet"
 #endif
+}
+
+void exec_op(uint8_t n) {
+	//printf("0x%04X : %02X -> %s\n", PC, n, ops[n].desc);
+	
+	switch (ops[n].length) {
+	case 1: break;
+	case 2: *imm_8 = mem_read_8(regs.PC + 1); break;
+	case 3: *imm_16 = mem_read_16(regs.PC + 1); break;
+	}
+	regs.PC += ops[n].length;
+
+	switch (ops[n].opt) {
+	case MEM_R_8:
+		tmp = mem_read_8(*(uint8_t*)ops[n].b + 0xFF00);
+		ops[n].handler(ops[n].a, &tmp);
+		break;
+	case MEM_R_16:
+		tmp = mem_read_8(*(uint16_t*)ops[n].b);
+		ops[n].handler(ops[n].a, &tmp);
+		break;
+	case MEM_W_8:
+		ops[n].handler(&tmp, ops[n].b);
+		mem_write_8(*(uint8_t*)ops[n].a + 0xFF00, tmp);
+		break;
+	case MEM_W_16:
+		ops[n].handler(&tmp, ops[n].b);
+		mem_write_8(*(uint16_t*)ops[n].a, tmp);
+		break;
+	case NONE:
+		ops[n].handler(ops[n].a, ops[n].b);
+		break;
+	}
+}
+
+void exec_op_cb(uint8_t n) {
+	//printf("0x%04X : %02X -> %s\n", PC - 1, n, ops_cb[n].desc);
+	
+	switch (ops_cb[n].opt) {
+	case MEM_R_16:
+		tmp = mem_read_8(*(uint16_t*)ops_cb[n].b);
+		ops_cb[n].handler(ops_cb[n].a, &tmp);
+		break;
+	case MEM_W_16:
+		ops_cb[n].handler(&tmp, ops_cb[n].b);
+		mem_write_8(*(uint16_t*)ops_cb[n].a, tmp);
+		break;
+	case MEM_RW_16:
+		tmp = mem_read_8(*(uint16_t*)ops_cb[n].a);
+		ops_cb[n].handler(&tmp, ops_cb[n].b);
+		mem_write_8(*(uint16_t*)ops_cb[n].a, tmp);
+		break;
+	case NONE:
+		ops_cb[n].handler(ops_cb[n].a, ops_cb[n].b);
+		break;
+	}
 }
 
 void set_flag(flag_t f, uint8_t v) {
@@ -1232,62 +1237,6 @@ void cpu_init() {
 	regs.ime_flag = 1;
 }
 
-void exec_op(uint8_t n) {
-	//printf("0x%04X : %02X -> %s\n", PC, n, ops[n].desc);
-	
-	switch (ops[n].length) {
-	case 1: break;
-	case 2: *imm_8 = mem_read_8(regs.PC + 1); break;
-	case 3: *imm_16 = mem_read_16(regs.PC + 1); break;
-	}
-	regs.PC += ops[n].length;
-
-	switch (ops[n].opt) {
-	case MEM_R_8:
-		tmp = mem_read_8(*(uint8_t*)ops[n].b + 0xFF00);
-		ops[n].handler(ops[n].a, &tmp);
-		break;
-	case MEM_R_16:
-		tmp = mem_read_8(*(uint16_t*)ops[n].b);
-		ops[n].handler(ops[n].a, &tmp);
-		break;
-	case MEM_W_8:
-		ops[n].handler(&tmp, ops[n].b);
-		mem_write_8(*(uint8_t*)ops[n].a + 0xFF00, tmp);
-		break;
-	case MEM_W_16:
-		ops[n].handler(&tmp, ops[n].b);
-		mem_write_8(*(uint16_t*)ops[n].a, tmp);
-		break;
-	case NONE:
-		ops[n].handler(ops[n].a, ops[n].b);
-		break;
-	}
-}
-
-void exec_op_cb(uint8_t n) {
-	//printf("0x%04X : %02X -> %s\n", PC - 1, n, ops_cb[n].desc);
-	
-	switch (ops_cb[n].opt) {
-	case MEM_R_16:
-		tmp = mem_read_8(*(uint16_t*)ops_cb[n].b);
-		ops_cb[n].handler(ops_cb[n].a, &tmp);
-		break;
-	case MEM_W_16:
-		ops_cb[n].handler(&tmp, ops_cb[n].b);
-		mem_write_8(*(uint16_t*)ops_cb[n].a, tmp);
-		break;
-	case MEM_RW_16:
-		tmp = mem_read_8(*(uint16_t*)ops_cb[n].a);
-		ops_cb[n].handler(&tmp, ops_cb[n].b);
-		mem_write_8(*(uint16_t*)ops_cb[n].a, tmp);
-		break;
-	case NONE:
-		ops_cb[n].handler(ops_cb[n].a, ops_cb[n].b);
-		break;
-	}
-}
-
 uint8_t disas_op(uint16_t off) {
 	uint8_t op;
 	inst_t inst;
@@ -1332,6 +1281,9 @@ uint8_t disas_op(uint16_t off) {
 			} else if (strstr(desc, "a16") != NULL) {
 				desc_tmp = replace_str(desc, "a16", "$0x%04X");
 				sprintf(desc, desc_tmp, arg_16);
+			} else {
+				printf("0x%04X: %s   %s\n", off, code, "ERROR");
+				return inst.length;
 			}
 			free(desc_tmp);
 		}
@@ -1419,6 +1371,7 @@ void cpu_dump_reg() {
 	       (*regs.F & H_FLAG) >> 5, (*regs.F & C_FLAG) >> 4);
 }
 
+/*
 void cpu_test() {
 	char line[128];
 	char *a = NULL, *b = NULL, *c = NULL;
@@ -1482,3 +1435,4 @@ void cpu_test() {
 		
 	}
 }
+*/

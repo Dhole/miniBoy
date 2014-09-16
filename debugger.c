@@ -12,6 +12,7 @@ const char *PROMPT = "miniBoy> ";
 const int ARG_LEN = 16;
 
 uint8_t break_points[MEM_SIZE];
+regs_t *regs;
 
 typedef struct {
 	char name[16];
@@ -54,36 +55,29 @@ void com_break(int n) {
 	}
 }
 
-void init_debug() {
-        com_clear(-1);
+void com_disas(int a, int b) {
+	int next = a;
+
+	while (b > next) {
+		next += disas_op(next);
+	}
 }
 
-void completion(const char *buf, linenoiseCompletions *lc) {
-	switch (buf[0]) {
-	case 'h':
-		linenoiseAddCompletion(lc, "help ");
-		break;
-	case 's':
-		linenoiseAddCompletion(lc, "step ");
-		break;
-	case 'r':
-		linenoiseAddCompletion(lc, "regs ");
-		linenoiseAddCompletion(lc, "run ");
-		break;
-	case 'b':
-		linenoiseAddCompletion(lc, "break ");
-		break;
-	case 'c':
-		linenoiseAddCompletion(lc, "continue ");
-		linenoiseAddCompletion(lc, "clear ");
-		break;
-	case 'm':
-		linenoiseAddCompletion(lc, "memory ");
-		break;
-	case 'q':
-		linenoiseAddCompletion(lc, "quit ");
-		break;
+void com_step(int a) {
+	int i;
+	
+	if (a < 0) {
+		a = 1;
 	}
+	for (i = 0; i < a; i++) {
+		disas_op(regs->PC);
+		cpu_step();
+	}
+}
+
+void init_debug() {
+        com_clear(-1);
+	regs = cpu_get_regs();
 }
 
 int parse_com(char *buf, command_t *com, int arg_len) {
@@ -127,12 +121,10 @@ int run_com(command_t *com) {
 	if (strncmp(name, "help", ARG_LEN) == 0 || name[0] == 'h') {
 		com_help();
 	} else if (strncmp(name, "step", ARG_LEN) == 0 || name[0] == 's') {
-		//printf("step!\n");
-		cpu_step();
+		com_step(com->arg_a);
 	} else if (strncmp(name, "run", ARG_LEN) == 0) {
 		printf("run!\n");
 	} else if (strncmp(name, "regs", ARG_LEN) == 0 || name[0] == 'r') {
-		//printf("regs!\n");
 		cpu_dump_reg();
 	} else if (strncmp(name, "break", ARG_LEN) == 0 || name[0] == 'b') {
 		com_break(com->arg_a);
@@ -143,6 +135,12 @@ int run_com(command_t *com) {
 	} else if (strncmp(name, "memory", ARG_LEN) == 0 || name[0] == 'm') {
 		//printf("memory!\n");
 		mem_dump(com->arg_a, com->arg_b);
+	} else if (strncmp(name, "disas", ARG_LEN) == 0 || name[0] == 'd') {
+		//printf("memory!\n");
+		com_disas(com->arg_a, com->arg_b);
+	} else if (strncmp(name, "io", ARG_LEN) == 0 || name[0] == 'i') {
+		//printf("memory!\n");
+		mem_dump_io_regs();
 	} else if (strncmp(name, "quit", ARG_LEN) == 0 || name[0] == 'q') {
 		return -2;
 	} else {
@@ -155,8 +153,6 @@ int run_com(command_t *com) {
 int debug_run() {
 	char *line;
 	command_t com;
-
-	linenoiseSetCompletionCallback(completion);
 
         init_debug();
 

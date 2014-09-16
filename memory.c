@@ -83,8 +83,8 @@ printf("%02X [TIMEMOD]:   %02x (%s)\n",
 IO_TIMEMOD, mm[IO_TIMEMOD], byte2bin_str(mm[IO_TIMEMOD], s));
 printf("%02X [TIMCONT]:   %02x (%s)\n",
 IO_TIMCONT, mm[IO_TIMCONT], byte2bin_str(mm[IO_TIMCONT], s));
-printf("%02X [IFFLAGS]:   %02x (%s)\n",
-IO_IFFLAGS, mm[IO_IFFLAGS], byte2bin_str(mm[IO_IFFLAGS], s));
+printf("%02X [IFLAGS]:    %02x (%s)\n",
+IO_IFLAGS, mm[IO_IFLAGS], byte2bin_str(mm[IO_IFLAGS], s));
 printf("%02X [SNDREG10]:  %02x (%s)\n",
 IO_SNDREG10, mm[IO_SNDREG10], byte2bin_str(mm[IO_SNDREG10], s));
 printf("%02X [SNDREG11]:  %02x (%s)\n",
@@ -151,6 +151,6 @@ printf("%02X [WNDPOSX]:   %02x (%s)\n",
 IO_WNDPOSX, mm[IO_WNDPOSX], byte2bin_str(mm[IO_WNDPOSX], s));
 printf("%02X [DMACONT]:   %02x (%s)\n",
 IO_DMACONT, mm[IO_DMACONT], byte2bin_str(mm[IO_DMACONT], s));
-printf("%02X [ISWITCH]:   %02x (%s)\n",
-IO_ISWITCH, mm[IO_ISWITCH], byte2bin_str(mm[IO_ISWITCH], s));
+printf("%02X [IENABLE]:   %02x (%s)\n",
+       IO_IENABLE, mm[IO_IENABLE], byte2bin_str(mm[IO_IENABLE], s));
 }
