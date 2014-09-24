@@ -1,16 +1,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <SDL2/SDL.h>
 #include "dmg.h"
+#include "screen.h"
+#include "sdl.h"
+
+const Uint32 frame_time = 
+
+Uint32 start_time, last_time, elapsed_time;
 
 void usage(char *argv0) {
 	printf("Usage: %s [-v] [-b bios] rom\n", argv0);
 	exit(1);
 }
 
+int main_loop() {
+	start_time = SDL_GetTicks();
+	elapsed_time = start_time - last_time;
+}
+
 int main(int argc, char** argv) {
 	int opt;
-	int verbose_flag = 0;
+	//int verbose_flag = 0;
 	int debug_flag = 0;
 	char *bios_path = NULL;
 	char *rom_path = NULL;
@@ -21,7 +33,7 @@ int main(int argc, char** argv) {
 			bios_path = optarg;
 			break;
 		case 'v':
-			verbose_flag = 1;
+			//verbose_flag = 1;
 			break;
 		case 'd':
 			debug_flag = 1;
@@ -38,7 +50,21 @@ int main(int argc, char** argv) {
 	dmg_load_bios(bios_path);
 	dmg_load_rom(rom_path);
 	dmg_init();
+	
+	sdl_init();
+
+	for (;;) {
+		if (main_loop()) {
+			break;
+		}
+		if (SDL_GetTicks() - start_time < minframetime) {
+			SDL_Delay(minframetime - (SDL_GetTicks() - start_time));
+		}
+	}
+	
 	//mem_dump(0, 0x100);
+
+	sdl_stop();
 
 	return 0;
 }

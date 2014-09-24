@@ -1,12 +1,13 @@
 DEBUG ?= 1
+CFLAGS = -Wall -Werror
 
 ifeq ($(DEBUG), 1)
-    CFLAGS = -DDEBUG -g
+    DBGFLAGS = -DDEBUG -g
 else
-    CFLAGS = -DNDEBUG
+    DBGFLAGS = -DNDEBUG
 endif
 
-CC = gcc $(CFLAGS)
+CC = gcc $(CFLAGS) $(DBGFLAGS)
 
 all: miniBoy
 

@@ -90,6 +90,7 @@ void exec_op(uint8_t n) {
 		ops[n].handler(&tmp, ops[n].b);
 		mem_write_8(*(uint16_t*)ops[n].a, tmp);
 		break;
+	case MEM_RW_16:
 	case NONE:
 		ops[n].handler(ops[n].a, ops[n].b);
 		break;
@@ -113,6 +114,8 @@ void exec_op_cb(uint8_t n) {
 		ops_cb[n].handler(&tmp, ops_cb[n].b);
 		mem_write_8(*(uint16_t*)ops_cb[n].a, tmp);
 		break;
+	case MEM_R_8:
+	case MEM_W_8:
 	case NONE:
 		ops_cb[n].handler(ops_cb[n].a, ops_cb[n].b);
 		break;
@@ -173,8 +176,8 @@ void op_ldhl(void *_a, void *_b) {
 	set_flag(Z_FLAG, 0);
 	set_flag(N_FLAG, 0);
 	// Not sure if this is right
-	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
-	set_flag(C_FLAG, (*a & 0xFF > 0xFF - *b) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x0F) > (0x0F - (*b & 0x0F))) ? 1 : 0);
+	set_flag(C_FLAG, ((*a & 0xFF) > (0xFF - *b)) ? 1 : 0);
 }
 
 void op_halt(void *_a, void *_b) {
@@ -185,8 +188,8 @@ void op_add_8(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
 
-	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
-	set_flag(C_FLAG, (*a > 0xFF - *b) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x0F) > (0x0F - (*b & 0x0F))) ? 1 : 0);
+	set_flag(C_FLAG, (*a > (0xFF - *b)) ? 1 : 0);
 	
 	*a += *b;
 
@@ -198,8 +201,8 @@ void op_add_16(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
 	uint16_t *b = (uint16_t*)_b;
 
-	set_flag(H_FLAG, (*a & 0x0FFF > 0x0FFF - *b & 0x0FFF) ? 1 : 0);
-	set_flag(C_FLAG, (*a & 0xFFFF > 0xFFFF - *b & 0xFFFF) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x0FFF) > (0x0FFF - (*b & 0x0FFF))) ? 1 : 0);
+	set_flag(C_FLAG, ((*a & 0xFFFF) > (0xFFFF - (*b & 0xFFFF))) ? 1 : 0);
 	
 	*a += *b;
 
@@ -210,8 +213,8 @@ void op_addsp(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
 	int8_t *b = (int8_t*)_b;
 
-	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
-	set_flag(C_FLAG, (*a & 0xFF > 0xFF - *b) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x0F) > (0x0F - (*b & 0x0F))) ? 1 : 0);
+	set_flag(C_FLAG, ((*a & 0xFF) > (0xFF - *b)) ? 1 : 0);
 	
 	*a += *b;
 
@@ -223,8 +226,8 @@ void op_adc(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
 	// CHECK THIS!!!
-	set_flag(H_FLAG, (*b & 0x0F < *b & 0x0F) ? 1 : 0);
-	set_flag(C_FLAG, (*b > 0xFF - *b) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F)) ? 1 : 0);
+	set_flag(C_FLAG, (*a > (0xFF - *b)) ? 1 : 0);
 	
 	*a += *b + get_flag(C_FLAG);
 
@@ -236,7 +239,7 @@ void op_sub(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
 
-	set_flag(H_FLAG, (*a & 0x0F < *b & 0x0F) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F)) ? 1 : 0);
 	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
 	
 	*a -= *b;
@@ -249,7 +252,7 @@ void op_sbc(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
 	// CHECK THIS!!!
-	set_flag(H_FLAG, (*a & 0x0F < *b & 0x0F) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F)) ? 1 : 0);
 	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
 	
 	*a -= *b + get_flag(C_FLAG);
@@ -297,7 +300,7 @@ void op_cp(void *_a, void *_b) {
 	
 	set_flag(Z_FLAG, (*a == *b) ? 1 : 0);
 	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, (*a & 0x0F > 0x0F - *b & 0x0F) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x0F) > (0x0F - (*b & 0x0F))) ? 1 : 0);
 	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
 }
 
@@ -1334,7 +1337,7 @@ int cpu_step() {
 	
 	exec_op(op);
 
-        if (int_cycles = handle_interrupts()) {
+        if ((int_cycles = handle_interrupts())) {
 		return int_cycles;
 	}
 
