@@ -6,3 +6,5 @@
 #define SCREEN_END_Y SCREEN_INI_Y + SCREEN_SIZE_Y
 
 #define SCREEN_FPS 59.73
+
+uint8_t *screen_get_fb();

@@ -1,5 +1,6 @@
 DEBUG ?= 1
 CFLAGS = -Wall -Werror
+SDL = -lSDL2
 
 ifeq ($(DEBUG), 1)
     DBGFLAGS = -DDEBUG -g
@@ -7,12 +8,12 @@ else
     DBGFLAGS = -DNDEBUG
 endif
 
-CC = gcc $(CFLAGS) $(DBGFLAGS)
+CC = clang $(CFLAGS) $(DBGFLAGS)
 
 all: miniBoy
 
-miniBoy: string_fun.o linenoise.o debugger.o lr35902.o dmg.o memory.o main.c
-	$(CC) string_fun.o linenoise.o debugger.o lr35902.o dmg.o memory.o main.c -o miniBoy
+miniBoy: sdl.o screen.o string_fun.o linenoise.o debugger.o lr35902.o dmg.o memory.o main.c
+	$(CC) sdl.o screen.o string_fun.o linenoise.o debugger.o lr35902.o dmg.o memory.o main.c -o miniBoy $(SDL)
 
 lr35902.o: lr35902.c
 	$(CC) -c lr35902.c
@@ -31,6 +32,12 @@ linenoise.o: linenoise/linenoise.c
 
 string_fun.o: string_fun.c
 	$(CC) -c string_fun.c
+
+screen.o: screen.c
+	$(CC) -c screen.c
+
+sdl.o: sdl.c
+	$(CC) -c sdl.c
 
 clean:
 	rm -rf *.o miniBoy

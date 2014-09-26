@@ -8,6 +8,10 @@
 
 static uint8_t mm[MEM_SIZE];
 
+uint8_t *mem_get_mem() {
+	return mm;
+}
+
 uint8_t mem_read_8(uint16_t addr) {
 	return mm[addr];
 	// Handle IO mappings???
@@ -65,11 +69,12 @@ char *byte2bin_str(uint8_t b, char *s) {
 	for (i = 0; i < 8; i++) {
 		s[i] = (b & (1 << i) >> i) + 48;
 	}
+	s[i] = '\0';
 	return s;
 }
 
 void mem_dump_io_regs() {
-	char s[8];
+	char s[16];
 printf("%02X [JOYPAD]:    %02x (%s)\n",
 IO_JOYPAD, mm[IO_JOYPAD], byte2bin_str(mm[IO_JOYPAD], s));
 printf("%02X [SIODATA]:   %02x (%s)\n",

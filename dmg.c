@@ -10,7 +10,6 @@
 
 static uint8_t bios[256];
 static uint8_t *rom;
-static int debug_flag;
 
 void dmg_load_bios(char *bios_path) {
 	int size;
@@ -57,17 +56,20 @@ void dmg_unload_rom() {
 	free(rom);
 }
 
-void dmg_init(int _debug_flag) {
-	debug_flag = debug_flag;
+void dmg_init() {
 	cpu_init();
 	//cpu_test();
-	debug_run();
+	//debug_run();
 }
 
-void dmg_run() {
+void dmg_reset() {
+	
+}
+
+void dmg_run(debug_flag) {
 	if (debug_flag) {
 		debug_run();
 	} else {
-		dmg_emulate_hardware()
+		//dmg_emulate_hardware();
 	}
 }

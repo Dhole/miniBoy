@@ -11,8 +11,8 @@
 const char *PROMPT = "miniBoy> ";
 const int ARG_LEN = 16;
 
-uint8_t break_points[MEM_SIZE];
-regs_t *regs;
+static uint8_t break_points[MEM_SIZE];
+static regs_t *regs;
 
 typedef struct {
 	char name[16];
@@ -29,6 +29,8 @@ void com_help() {
 	       "continue\n"
 	       "clear [n]\n"
 	       "memory [start] [end]\n"
+	       "disas [start] [end]\n"
+	       "io"
 	       "quit\n\n");
 }
 
@@ -76,7 +78,10 @@ void com_step(int a) {
 }
 
 void init_debug() {
-        com_clear(-1);
+	int i;
+	for (i = 0; i < MEM_SIZE; i++) {
+		break_points[i] = 0;
+	}
 	regs = cpu_get_regs();
 }
 
