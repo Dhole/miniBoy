@@ -12,6 +12,18 @@ uint8_t *mem_get_mem() {
 	return mm;
 }
 
+void mem_bit_set(uint16_t addr, uint8_t bit) {
+	mm[addr] |= bit;
+}
+
+void mem_bit_unset(uint16_t addr, uint8_t bit) {
+	mm[addr] &= ~bit;
+}
+
+void mem_bit_test(uint16_t addr, uint8_t bit) {
+	return ((mm[addr] & bit) > 0);
+}
+
 uint8_t mem_read_8(uint16_t addr) {
 	return mm[addr];
 	// Handle IO mappings???
@@ -67,7 +79,7 @@ void mem_dump(uint16_t start, uint16_t end) {
 char *byte2bin_str(uint8_t b, char *s) {
 	int i;
 	for (i = 0; i < 8; i++) {
-		s[i] = (b & (1 << i) >> i) + 48;
+		s[i] = ((b & (1 << i)) >> i) + 48;
 	}
 	s[i] = '\0';
 	return s;

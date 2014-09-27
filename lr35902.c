@@ -1306,24 +1306,25 @@ int handle_interrupts() {
 	if (ienable & iflags & MASK_IO_INT_VBlank) {
 		op_push(&regs.PC, NULL);
 		regs.PC = ADDR_INT_VBlank;
-		mem_write_8(IO_IFLAGS, iflags & ~MASK_IO_INT_VBlank);
+		mem_bit_unset(IO_IFLAGS, MASK_IO_INT_VBlank);
 	} else if (ienable & iflags & MASK_IO_INT_LCDSTAT_Int) {
 		op_push(&regs.PC, NULL);
 		regs.PC = ADDR_INT_LCDSTAT_Int;
-		mem_write_8(IO_IFLAGS, iflags & ~MASK_IO_INT_LCDSTAT_Int);
+		mem_bit_unset(IO_IFLAGS, MASK_IO_INT_LCDSTAT_Int);
 	} else if (ienable & iflags & MASK_IO_INT_Timer_Overflow) {
 		op_push(&regs.PC, NULL);
 		regs.PC = ADDR_INT_Timer_Overflow;
-		mem_write_8(IO_IFLAGS, iflags & ~MASK_IO_INT_Timer_Overflow);
+		mem_bit_unset(IO_IFLAGS, MASK_IO_INT_Timer_Overflow);
 	} else if (ienable & iflags & MASK_IO_INT_End_Serial_IO_Transfer) {
 		op_push(&regs.PC, NULL);
 		regs.PC = ADDR_INT_End_Serial_IO_Transfer;
-		mem_write_8(IO_IFLAGS, iflags & ~MASK_IO_INT_End_Serial_IO_Transfer);
+		mem_bit_unset(IO_IFLAGS, MASK_IO_INT_End_Serial_IO_Transfer);
 	} else if (ienable & iflags & MASK_IO_INT_High_to_Low_P10_P13) {
 		op_push(&regs.PC, NULL);
 		regs.PC = ADDR_INT_High_to_Low_P10_P13;
-		mem_write_8(IO_IFLAGS, iflags & ~MASK_IO_INT_High_to_Low_P10_P13);
+		mem_bit_unset(IO_IFLAGS, MASK_IO_INT_High_to_Low_P10_P13);
 	}
+	op_di(NULL, NULL);
 	return 20;
 }
 
@@ -1373,69 +1374,3 @@ void cpu_dump_reg() {
 	printf("%d %d %d %d\n", (*regs.F & Z_FLAG) >> 7, (*regs.F & N_FLAG) >> 6,
 	       (*regs.F & H_FLAG) >> 5, (*regs.F & C_FLAG) >> 4);
 }
-
-/*
-void cpu_test() {
-	char line[128];
-	char *a = NULL, *b = NULL, *c = NULL;
-	uint16_t vb = 0, vc = 0;
-	int i;
-	////
-	uint16_t off = 0;
-	
-	while (1) {
-		printf("> ");
-		fgets(line, 128, stdin);
-		a = strtok(line, " ");
-		if (b = strtok(NULL, " ")) {
-			vb = strtol(b, NULL, 16);
-		} else {
-			vb = 0;
-		}
-		if (c = strtok(NULL, " ")) {
-			vc = strtol(c, NULL, 16);
-		} else {
-			vc = 0;
-		}
-		switch (a[0]) {
-		case 's':
-			for (i = 0; i < vb; i++) {
-				disas_op(regs.PC);
-				cpu_step();
-			}
-			break;
-		case 'b':
-			if (vb == 0) {
-				break;
-			}
-			printf("Set breakpoint at 0x%04X\n", vb);
-			while (regs.PC != vb) {
-				disas_op(regs.PC);
-				cpu_step();
-			}
-			break;
-		case 'r':
-			cpu_dump_reg();
-			break;
-		case 'i':
-			mem_dump_io_regs();
-			break;
-		case 'm':
-			//mem_dump(0xFFF0, 0xFFFF);
-			mem_dump(vb, vc);
-			break;
-		case 'd':
-			for (i = 0; i < 100; i++) {
-				off += disas_op(off);
-			}
-			
-			break;
-		default:
-			disas_op(regs.PC);
-			cpu_step();
-			break;
-		}
-		
-	}
-}
-*/

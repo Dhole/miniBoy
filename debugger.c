@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include "debugger.h"
 #include "memory.h"
 #include "lr35902.h"
 #include "linenoise/linenoise.h"
@@ -30,7 +31,7 @@ void com_help() {
 	       "clear [n]\n"
 	       "memory [start] [end]\n"
 	       "disas [start] [end]\n"
-	       "io"
+	       "io\n"
 	       "quit\n\n");
 }
 
@@ -120,7 +121,7 @@ int parse_com(char *buf, command_t *com, int arg_len) {
 	return 2;	
 }
 
-int run_com(command_t *com) {
+debug_ret_t run_com(command_t *com) {
 	char *name = com->name;
 	
 	if (strncmp(name, "help", ARG_LEN) == 0 || name[0] == 'h') {
@@ -136,7 +137,7 @@ int run_com(command_t *com) {
 	} else if (strncmp(name, "clear", ARG_LEN) == 0) {
 		com_clear(com->arg_a);
 	} else if (strncmp(name, "continue", ARG_LEN) == 0 || name[0] == 'c') {
-		printf("continue!\n");
+		return DBG_CONTINUE;
 	} else if (strncmp(name, "memory", ARG_LEN) == 0 || name[0] == 'm') {
 		//printf("memory!\n");
 		mem_dump(com->arg_a, com->arg_b);
@@ -147,15 +148,15 @@ int run_com(command_t *com) {
 		//printf("memory!\n");
 		mem_dump_io_regs();
 	} else if (strncmp(name, "quit", ARG_LEN) == 0 || name[0] == 'q') {
-		return -2;
+		return DBG_EXIT;
 	} else {
 		printf("E) Unrecognized command: %s\n", name);
-		return -1;
+		return DBG_NOTHING;
 	}
-	return 0;
+        return DBG_NOTHING;
 }
 
-int debug_run() {
+debug_ret_t debug_run() {
 	char *line;
 	command_t com;
 
@@ -171,9 +172,16 @@ int debug_run() {
 			}
 		}		
 		free(line);
-		if (run_com(&com) == -2) {
+		switch (run_com(&com)) {
+		case DBG_EXIT:
+			return DBG_EXIT;
 			break;
-		}
+		case DBG_CONTINUE:
+			return DBG_CONTINUE;
+			break;
+		default:
+			break;
+	        }
 	}
-	return 0;
+	return DBG_EXIT;
 }

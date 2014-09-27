@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include "lr35902.h"
 #include "memory.h"
+#include "screen.h"
+#include "io_regs.h"
 #include "debugger.h"
 
 #define MAX_BIOS_SIZE 0x100
@@ -66,10 +68,27 @@ void dmg_reset() {
 	
 }
 
-void dmg_run(debug_flag) {
+void dmg_run(uint32_t delta, int debug_flag) {
+	int clk, cycles;
 	if (debug_flag) {
-		debug_run();
+		debug_run(delta);
 	} else {
-		//dmg_emulate_hardware();
+		//dmg_emulate_hardware(delta);
+		clk = 0;
+	        screen_start_frame();
+		
+		while (clk < SCREEN_DUR_FRAME) {
+			// if timer overflow...
+			// if End of serial IO transfer...
+			// if High to low p10-p13...
+
+			cycles = cpu_step();
+
+			// If LCD on...!!!
+			screen_emulate(cycles);
+			
+			clk += cycles;
+		}
+		screen_write_fb();
 	}
 }

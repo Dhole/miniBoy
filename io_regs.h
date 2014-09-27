@@ -75,19 +75,19 @@
 #define MASK_IO_LCDSTAT_Mode_1_VBlank_Interrupt      0x01 << 4
 #define MASK_IO_LCDSTAT_Mode_0_HBlank_Interrupt      0x01 << 3
 #define MASK_IO_LCDSTAT_Coincidence_Flag             0x01 << 2
-#define MASK_IO_LCDSTAT_Mode_Flag                    0x01 << 1 + 0x01 << 0
+#define MASK_IO_LCDSTAT_Mode_Flag                    (0x01 << 1) + (0x01 << 0)
 
-#define OPT_LYC_neq_LY 0
-#define OPT_LYC_eq_LY  1
-#define OPT_During_HBlank             0
-#define OPT_During_VBlank             1
-#define OPT_During_Searching_OAM      2
-#define OPT_During_Transf_Data_to_LCD 3
+#define OPT_LYC_neq_LY    0
+#define OPT_LYC_eq_LY     1
+#define OPT_Mode_HBlank   0
+#define OPT_Mode_VBlank   1
+#define OPT_Mode_OAM      2
+#define OPT_Mode_OAM_VRAM 3
 
-#define MASK_IO_BGRDPAL_Shade_Color_3 0x01 << 7 + 0x01 << 6
-#define MASK_IO_BGRDPAL_Shade_Color_2 0x01 << 5 + 0x01 << 4
-#define MASK_IO_BGRDPAL_Shade_Color_1 0x01 << 3 + 0x01 << 2
-#define MASK_IO_BGRDPAL_Shade_Color_0 0x01 << 1 + 0x01 << 0
+#define MASK_IO_BGRDPAL_Shade_Color_3 (0x01 << 7) + (0x01 << 6)
+#define MASK_IO_BGRDPAL_Shade_Color_2 (0x01 << 5) + (0x01 << 4)
+#define MASK_IO_BGRDPAL_Shade_Color_1 (0x01 << 3) + (0x01 << 2)
+#define MASK_IO_BGRDPAL_Shade_Color_0 (0x01 << 1) + (0x01 << 0)
 
 #define OPT_Color_White      0
 #define OPT_Color_Light_Gray 1

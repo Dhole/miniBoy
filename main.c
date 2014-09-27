@@ -36,13 +36,13 @@ event_t process_event(SDL_Event *e) {
 				break;
 			case KEY_SCALE_1:
 				if (scale > 1) {
-					scale /= 2;
+					scale -= 1;
 					sdl_change_scale(scale);
 				}
 				break;
 			case KEY_SCALE_2:
-				if (scale < 8) {
-					scale *= 2;
+				if (scale < 6) {
+					scale += 1;
 					sdl_change_scale(scale);
 				}
 				break;
@@ -57,16 +57,17 @@ event_t process_event(SDL_Event *e) {
 	return E_NOTHING;
 }
 
-int main_loop(Uint32 time) {
+int main_loop(Uint32 delta) {
 	SDL_Event e;
 	// Capture events
 	while (SDL_PollEvent(&e)) {
-		switch(process_event(&Keye)) {
+		switch(process_event(&e)) {
 		case E_RESET:
 			dmg_reset();
 			break;
 		case E_EXIT:
 			return 1;
+			break;
 		default:
 			break;
 		}
@@ -75,7 +76,13 @@ int main_loop(Uint32 time) {
 		//keyboard_update_keys();
 		// Do sound or whatever
 		// ...
-		dmg_run(debug_flag);
+		dmg_run(delta, debug_flag);
+		if (debug_flag) {
+			debug_flag = 0;
+		}
+
+		// Something
+		//randomize(screen_get_fb());
 	}
 	return 0;
 }
@@ -86,9 +93,11 @@ int main(int argc, char** argv) {
 	char *bios_path = NULL;
 	char *rom_path = NULL;
 	Uint32 start_time, time, frame;
+	uint32_t delta;
 
 	pause_emu = 0;
-
+	scale = 1;
+	
 	while ((opt = getopt(argc, argv, "vdb:")) != -1) {
 		switch (opt) {
 		case 'b':
@@ -115,12 +124,14 @@ int main(int argc, char** argv) {
 	
 	sdl_init();
 
+	time = 0;
 	frame = 1;
 	start_time = SDL_GetTicks();
 	for (;;) {
-		time = (frame * 1000) / SCREEN_FPS;
+		delta = ((frame * 1000) / SCREEN_FPS) - time;
+		time += delta;
 		
-		if (main_loop(time)) {
+		if (main_loop(delta)) {
 			break;
 		}
 
