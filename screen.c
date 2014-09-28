@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <assert.h> // Temporary
 #include "io_regs.h"
 #include "screen.h"
 #include "memory.h"
@@ -27,15 +28,28 @@ void screen_write_fb() {
 	int i, j;
 	for (j = 0; j < SCREEN_SIZE_Y; j++) {
 		for (i = 0; i < SCREEN_SIZE_X; i++) {
-			fb[j * SCROLLX + i] = background[j * 256 + i];
+			fb[j * SCREEN_SIZE_X + i] = background[j * 256 + i];
+		}
+	}
+}
+
+void dump_background() {
+	int i, j;
+	// Dump just 1st quarter of screen 
+	for (j = 0; j < 128; j++) {
+		for (i = 0; i < 128; i++) {
+			printf("%d", background[j * 256 + i]);
+		}
+		printf("\n");
 	}
 }
 
 void screen_draw_line(uint8_t line) {
-	uint16_t bg_tile_map;
-	uint8_t scroll_x, scroll_y;
-	uint8_t oam_row, obj;
+	uint16_t bg_tile_map, tile_data;
+	uint8_t scroll_x, scroll_y; // scroll_y can't change during frame !!!
+	uint8_t oam_row, obj, obj_line;
 	uint8_t i, j;
+	uint8_t obj_line_a, obj_line_b;
 	
 	// Check sprite size !!!
 	// Background
@@ -52,15 +66,43 @@ void screen_draw_line(uint8_t line) {
 		bg_tile_map = 0x9C00;
 		break;
 	}
+	switch (mem_bit_test(IO_LCDCONT,
+			     MASK_IO_LCDCONT_BGWindow_Title_Data_Select)) {
+	case OPT_BGWindow_Tile_Data_8800_97FF:
+		// Some work to do here !!!
+		tile_data = 0x9000;
+		break;
+	case OPT_BGWindow_Tile_Data_8000_8FFF:
+		tile_data = 0x8000;
+		break;
+	}
 	// WIP WIP WIP
-	oam_row = (cur_line / 8) - (scrolly / 8);
-	obj_line = (cur_line % 8) - (scrolly % 8);
+	oam_row = (cur_line + scroll_y) / 8;
+	obj_line = (cur_line + scroll_y) % 8;
 	for (i = 0; i < 32; i++) {
 		obj = mem_read_8(bg_tile_map + oam_row * 32 + i);
+		obj_line_a = mem_read_8(tile_data + obj * 16 + obj_line * 2);
+		obj_line_b = mem_read_8(tile_data + obj * 16 + obj_line * 2 + 1);
 		for (j = 0; j < 8; j++) {
-			
+			background[cur_line * 256 + (i * 8 + scroll_x + j) % 256] =
+				((obj_line_a & (1 << (7 - j))) >> (7 - j)) +
+				((obj_line_b & (1 << (7 - j))) >> (6 - j));
 		}
 	}
+
+	/*
+	if (scroll_y == 4 && cur_line == 100) {
+		printf("bg_tile_map: 0x%04X\ntile_data: 0x%04X\n",
+		       bg_tile_map, tile_data);
+		dump_background();
+		//assert(1 == 2);
+	}
+	*/
+	/*
+	if (cur_line == 100) {
+		printf("Scroll y: %d\n", scroll_y);
+	}
+	*/
 	
 }
 

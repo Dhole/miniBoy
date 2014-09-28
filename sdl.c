@@ -12,10 +12,10 @@ static SDL_Surface *disp = NULL;
 static SDL_Rect stretch_rect;
 Uint32 rmask, gmask, bmask, amask;
 void sdl_setup_palette() {
-	palette[0] = SDL_MapRGB(screen->format, 0x00, 0x00, 0x00);
-	palette[1] = SDL_MapRGB(screen->format, 0x55, 0x55, 0x55);
-	palette[2] = SDL_MapRGB(screen->format, 0xAA, 0xAA, 0xAA);
-	palette[3] = SDL_MapRGB(screen->format, 0xFF, 0xFF, 0xFF);
+	palette[3] = SDL_MapRGB(screen->format, 0x00, 0x00, 0x00);
+	palette[2] = SDL_MapRGB(screen->format, 0x55, 0x55, 0x55);
+	palette[1] = SDL_MapRGB(screen->format, 0xAA, 0xAA, 0xAA);
+	palette[0] = SDL_MapRGB(screen->format, 0xFF, 0xFF, 0xFF);
 }
 int sdl_init() {
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN

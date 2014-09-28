@@ -20,7 +20,7 @@ void mem_bit_unset(uint16_t addr, uint8_t bit) {
 	mm[addr] &= ~bit;
 }
 
-void mem_bit_test(uint16_t addr, uint8_t bit) {
+uint8_t mem_bit_test(uint16_t addr, uint8_t bit) {
 	return ((mm[addr] & bit) > 0);
 }
 
@@ -77,9 +77,10 @@ void mem_dump(uint16_t start, uint16_t end) {
 }
 
 char *byte2bin_str(uint8_t b, char *s) {
-	int i;
+	int i, bi;
 	for (i = 0; i < 8; i++) {
-		s[i] = ((b & (1 << i)) >> i) + 48;
+		bi = 7 - i;
+		s[i] = ((b & (1 << bi)) >> bi) + 48;
 	}
 	s[i] = '\0';
 	return s;

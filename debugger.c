@@ -58,11 +58,16 @@ void com_break(int n) {
 	}
 }
 
-void com_disas(int a, int b) {
-	int next = a;
-
-	while (b > next) {
-		next += disas_op(next);
+void com_disas(int start, int end) {
+	if (start == -1) {
+		start = regs->PC;
+		end = start + 16;
+	} else if (end == -1) {
+		end = start + 16;
+	}
+	
+	while (end > start) {
+		start += disas_op(start);
 	}
 }
 
