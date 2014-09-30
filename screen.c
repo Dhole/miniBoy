@@ -85,8 +85,8 @@ void screen_draw_line(uint8_t line) {
 		obj_line_b = mem_read_8(tile_data + obj * 16 + obj_line * 2 + 1);
 		for (j = 0; j < 8; j++) {
 			background[cur_line * 256 + (i * 8 + scroll_x + j) % 256] =
-				((obj_line_a & (1 << (7 - j))) >> (7 - j)) +
-				((obj_line_b & (1 << (7 - j))) >> (6 - j));
+				((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
+				((obj_line_b & (1 << (7 - j))) ? 2 : 0);
 		}
 	}
 
