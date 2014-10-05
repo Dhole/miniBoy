@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include "memory.h"
@@ -7,6 +8,51 @@
 
 
 static uint8_t mm[MEM_SIZE];
+
+static uint8_t *bios;
+static uint8_t *rom;
+static unsigned int bios_size;
+static unsigned int rom_size;
+// Maybe add mem_init to set the pointers to NULL???
+
+void mem_load(uint16_t addr, uint8_t *buf, unsigned int size) {
+	memcpy(&mm[addr], buf, size);
+}
+
+void mem_set_rom(uint8_t *r, unsigned int size) {
+	rom = r;
+	rom_size = size;
+	//printf("ROM JUST SET size: %d\n", rom_size);
+	//printf("%02x %02x %02x %02x\n", rom[0], rom[1], rom[2], rom[3]);
+}
+
+void mem_unset_rom() {
+	if (rom != NULL) {
+		free(rom);
+	} else {
+		printf("Error, no set rom to unset!!!\n");
+	}
+}
+
+void mem_load_rom() {
+	//mem_load(0, rom, rom_size);
+	mem_load(0, rom, 0x8000);
+}
+
+void mem_set_bios(uint8_t *b,  unsigned int size) {
+	bios = b;
+	bios_size = size;
+}
+
+void mem_enable_bios() {
+	mem_load(0, bios, bios_size);
+	//printf("BIOS JUST ENABLED size: %d\n", bios_size);
+	//mem_dump(0x0, 0x200);
+}
+
+void mem_disable_bios() {
+	mem_load(0, rom, bios_size);
+}
 
 uint8_t *mem_get_mem() {
 	return mm;
@@ -36,8 +82,18 @@ uint16_t mem_read_16(uint16_t addr) {
 }
 
 void mem_write_8(uint16_t addr, uint8_t v) {
-	mm[addr] = v;
+	
 	// Handle IO mappings
+	if (addr == 0xFF50) {
+		//printf("SOMETHING HERE!!!\n");
+		if (v == 1) {
+			// Unmap ROM
+			mem_disable_bios();
+		}
+		mm[addr] = v;
+	} else {
+		mm[addr] = v;
+	}
 }
 
 void mem_write_16(uint16_t addr, uint16_t v) {
@@ -45,10 +101,6 @@ void mem_write_16(uint16_t addr, uint16_t v) {
 	//mm[addr + 1] = (uint8_t)((v & 0xFF00) >> 8);
 	mem_write_8(addr, (uint8_t)(v & 0x00FF));
 	mem_write_8(addr + 1, (uint8_t)((v & 0xFF00) >> 8));
-}
-
-void mem_load(uint16_t addr, uint8_t *buf, uint16_t size) {
-	memcpy(&mm[addr], buf, size);
 }
 
 void mem_dump(uint16_t start, uint16_t end) {

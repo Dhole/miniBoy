@@ -154,18 +154,42 @@ void op_ld_16(void *_a, void *_b) {
 	*a = *b;
 }
 
+// BUG!!!, HL+ happens before the exec_op() stores the result
+// Dirty fix
 void op_ldi(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
-	uint8_t *b = (uint8_t*)_b;
-	*a = *b;
-	(*regs.HL)++;
+	//uint8_t *b = (uint8_t*)_b;
+	//*a = *b;
+	//(*regs.HL)++;
+	if (a == regs.A) {
+		exec_op(0x7E);
+		regs.PC -= ops[0x7E].length;
+	} else {
+		exec_op(0x77);
+		regs.PC -= ops[0x77].length;
+	}
+	
+	exec_op(0x23);
+	regs.PC -= ops[0x2B].length;
 }
 
+// BUG!!!, HL- happens before the exec_op() stores the result
+// Dirty fix
 void op_ldd(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
-	uint8_t *b = (uint8_t*)_b;
-	*a = *b;
-	(*regs.HL)--;
+	//uint8_t *b = (uint8_t*)_b;
+	//*a = *b;
+	//(*regs.HL)--;
+	if (a == regs.A) {
+		exec_op(0x7E);
+		regs.PC -= ops[0x7E].length;
+	} else {
+		exec_op(0x77);
+		regs.PC -= ops[0x77].length;
+	}
+	
+	exec_op(0x2B);
+	regs.PC -= ops[0x2B].length;
 }
 
 void op_ldhl(void *_a, void *_b) {
@@ -187,12 +211,12 @@ void op_halt(void *_a, void *_b) {
 void op_add_8(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
-
+	
 	set_flag(H_FLAG, ((*a & 0x0F) > (0x0F - (*b & 0x0F))) ? 1 : 0);
 	set_flag(C_FLAG, (*a > (0xFF - *b)) ? 1 : 0);
 	
 	*a += *b;
-
+	
 	set_flag_Z(a);
 	set_flag(N_FLAG, 0);
 }
@@ -200,7 +224,7 @@ void op_add_8(void *_a, void *_b) {
 void op_add_16(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
 	uint16_t *b = (uint16_t*)_b;
-
+	
 	set_flag(H_FLAG, ((*a & 0x0FFF) > (0x0FFF - (*b & 0x0FFF))) ? 1 : 0);
 	set_flag(C_FLAG, ((*a & 0xFFFF) > (0xFFFF - (*b & 0xFFFF))) ? 1 : 0);
 	
@@ -738,7 +762,7 @@ SET_OP(0x1E, "LD E,d8", op_ld_8, regs.E, imm_8, NONE, 2, 8, 0);
 SET_OP(0x1F, "RRA", op_rra, NULL, NULL, NONE, 1, 4, 0);
 SET_OP(0x20, "JR NZ,r8", op_jr, &C_NZ, imm_8, NONE, 2, 8, 12);
 SET_OP(0x21, "LD HL,d16", op_ld_16, regs.HL, imm_16, NONE, 3, 12, 0);
-SET_OP(0x22, "LD (HL+),A", op_ldi, regs.HL, regs.A, MEM_W_16, 1, 8, 0);
+SET_OP(0x22, "LD (HL+),A", op_ldi, regs.HL, regs.A, NONE, 1, 8, 0);
 SET_OP(0x23, "INC HL", op_inc_16, regs.HL, NULL, NONE, 1, 8, 0);
 SET_OP(0x24, "INC H", op_inc_8, regs.H, NULL, NONE, 1, 4, 0);
 SET_OP(0x25, "DEC H", op_dec_8, regs.H, NULL, NONE, 1, 4, 0);
@@ -746,7 +770,7 @@ SET_OP(0x26, "LD H,d8", op_ld_8, regs.H, imm_8, NONE, 2, 8, 0);
 SET_OP(0x27, "DAA", op_daa, NULL, NULL, NONE, 1, 4, 0);
 SET_OP(0x28, "JR Z,r8", op_jr, &C_Z, imm_8, NONE, 2, 8, 12);
 SET_OP(0x29, "ADD HL,HL", op_add_16, regs.HL, regs.HL, NONE, 1, 8, 0);
-SET_OP(0x2A, "LD A,(HL+)", op_ldi, regs.A, regs.HL, MEM_R_16, 1, 8, 0);
+SET_OP(0x2A, "LD A,(HL+)", op_ldi, regs.A, regs.HL, NONE, 1, 8, 0);
 SET_OP(0x2B, "DEC HL", op_dec_16, regs.HL, NULL, NONE, 1, 8, 0);
 SET_OP(0x2C, "INC L", op_inc_8, regs.L, NULL, NONE, 1, 4, 0);
 SET_OP(0x2D, "DEC L", op_dec_8, regs.L, NULL, NONE, 1, 4, 0);
@@ -754,7 +778,7 @@ SET_OP(0x2E, "LD L,d8", op_ld_8, regs.L, imm_8, NONE, 2, 8, 0);
 SET_OP(0x2F, "CPL", op_cpl, NULL, NULL, NONE, 1, 4, 0);
 SET_OP(0x30, "JR NC,r8", op_jr, &C_NC, imm_8, NONE, 2, 8, 12);
 SET_OP(0x31, "LD SP,d16", op_ld_16, regs.SP, imm_16, NONE, 3, 12, 0);
-SET_OP(0x32, "LD (HL-),A", op_ldd, regs.HL, regs.A, MEM_W_16, 1, 8, 0);
+SET_OP(0x32, "LD (HL-),A", op_ldd, regs.HL, regs.A, NONE, 1, 8, 0);
 SET_OP(0x33, "INC SP", op_inc_16, regs.SP, NULL, NONE, 1, 8, 0);
 SET_OP(0x34, "INC (HL)", op_inc_8, regs.HL, NULL, MEM_W_16, 1, 12, 0);
 SET_OP(0x35, "DEC (HL)", op_dec_8, regs.HL, NULL, MEM_W_16, 1, 12, 0);
@@ -762,7 +786,7 @@ SET_OP(0x36, "LD (HL),d8", op_ld_8, regs.HL, imm_8, MEM_W_16, 2, 12, 0);
 SET_OP(0x37, "SCF", op_scf, NULL, NULL, NONE, 1, 4, 0);
 SET_OP(0x38, "JR C,r8", op_jr, &C_C, imm_8, NONE, 2, 8, 12);
 SET_OP(0x39, "ADD HL,SP", op_add_16, regs.HL, regs.SP, NONE, 1, 8, 0);
-SET_OP(0x3A, "LD A,(HL-)", op_ldd, regs.A, regs.HL, MEM_R_16, 1, 8, 0);
+SET_OP(0x3A, "LD A,(HL-)", op_ldd, regs.A, regs.HL, NONE, 1, 8, 0);
 SET_OP(0x3B, "DEC SP", op_dec_16, regs.SP, NULL, NONE, 1, 8, 0);
 SET_OP(0x3C, "INC A", op_inc_8, regs.A, NULL, NONE, 1, 4, 0);
 SET_OP(0x3D, "DEC A", op_dec_8, regs.A, NULL, NONE, 1, 4, 0);

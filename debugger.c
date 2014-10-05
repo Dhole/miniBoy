@@ -9,16 +9,24 @@
 
 //#define MEM_SIZE 0x10000
 
+typedef struct {
+	char name[16];
+	int arg_a, arg_b;
+} command_t;
+
+typedef enum {
+	DBG_IDLE,
+	DBG_CONT,
+	DBG_STEP
+} dbg_state_t;
+
 const char *PROMPT = "miniBoy> ";
 const int ARG_LEN = 16;
 
 static uint8_t break_points[MEM_SIZE];
 static regs_t *regs;
-
-typedef struct {
-	char name[16];
-	int arg_a, arg_b;
-} command_t;
+static dbg_state_t state;
+static int rem_steps;
 
 void com_help() {
 	printf("\n    -= miniBoy debugger commands: =-\n\n"
@@ -72,23 +80,19 @@ void com_disas(int start, int end) {
 }
 
 void com_step(int a) {
-	int i;
-	
 	if (a < 0) {
 		a = 1;
 	}
-	for (i = 0; i < a; i++) {
-		disas_op(regs->PC);
-		cpu_step();
-	}
+	rem_steps = a;
+	state = DBG_STEP;
 }
 
-void init_debug() {
+void debug_init() {
 	int i;
 	for (i = 0; i < MEM_SIZE; i++) {
 		break_points[i] = 0;
 	}
-	regs = cpu_get_regs();
+	state = DBG_IDLE;
 }
 
 int parse_com(char *buf, command_t *com, int arg_len) {
@@ -126,15 +130,16 @@ int parse_com(char *buf, command_t *com, int arg_len) {
 	return 2;	
 }
 
-debug_ret_t run_com(command_t *com) {
+int run_com(command_t *com) {
 	char *name = com->name;
 	
 	if (strncmp(name, "help", ARG_LEN) == 0 || name[0] == 'h') {
 		com_help();
 	} else if (strncmp(name, "step", ARG_LEN) == 0 || name[0] == 's') {
 		com_step(com->arg_a);
+		return 1;
 	} else if (strncmp(name, "run", ARG_LEN) == 0) {
-		printf("run!\n");
+		return -1;
 	} else if (strncmp(name, "regs", ARG_LEN) == 0 || name[0] == 'r') {
 		cpu_dump_reg();
 	} else if (strncmp(name, "break", ARG_LEN) == 0 || name[0] == 'b') {
@@ -142,7 +147,8 @@ debug_ret_t run_com(command_t *com) {
 	} else if (strncmp(name, "clear", ARG_LEN) == 0) {
 		com_clear(com->arg_a);
 	} else if (strncmp(name, "continue", ARG_LEN) == 0 || name[0] == 'c') {
-		return DBG_CONTINUE;
+		state = DBG_CONT;
+		return 1;
 	} else if (strncmp(name, "memory", ARG_LEN) == 0 || name[0] == 'm') {
 		//printf("memory!\n");
 		mem_dump(com->arg_a, com->arg_b);
@@ -153,19 +159,41 @@ debug_ret_t run_com(command_t *com) {
 		//printf("memory!\n");
 		mem_dump_io_regs();
 	} else if (strncmp(name, "quit", ARG_LEN) == 0 || name[0] == 'q') {
-		return DBG_EXIT;
+		return -1;
 	} else {
 		printf("E) Unrecognized command: %s\n", name);
-		return DBG_NOTHING;
 	}
-        return DBG_NOTHING;
+        return 0;
 }
 
-debug_ret_t debug_run() {
+int debug_run(int *debug_flag) {
 	char *line;
 	command_t com;
+	int res;
 
-        init_debug();
+	regs = cpu_get_regs();
+	
+	switch(state) {
+	case DBG_IDLE:
+		break;
+	case DBG_STEP:
+		if (rem_steps > 0) {
+			disas_op(regs->PC);
+			rem_steps--;
+			return cpu_step();
+		} else {
+			state = DBG_IDLE;
+		}
+		break;
+	case DBG_CONT:
+		if (break_points[regs->PC]) {
+			state = DBG_IDLE;
+			break;
+		} else {
+			return cpu_step();
+		}
+		break;
+	}
 
 	while((line = linenoise(PROMPT)) != NULL) {
 		if (line[0] != '\0') {
@@ -177,16 +205,15 @@ debug_ret_t debug_run() {
 			}
 		}		
 		free(line);
-		switch (run_com(&com)) {
-		case DBG_EXIT:
-			return DBG_EXIT;
-			break;
-		case DBG_CONTINUE:
-			return DBG_CONTINUE;
-			break;
-		default:
-			break;
-	        }
+		res = run_com(&com);
+		if (res < 0) {
+			*debug_flag = 0;
+			return 0;
+		} else if (res == 0) {
+			continue;
+		} else {
+			return 0;
+		}
 	}
-	return DBG_EXIT;
+	return 0;
 }

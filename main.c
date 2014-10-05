@@ -76,10 +76,7 @@ int main_loop(Uint32 delta) {
 		//keyboard_update_keys();
 		// Do sound or whatever
 		// ...
-		dmg_run(delta, debug_flag);
-		if (debug_flag) {
-			debug_flag = 0;
-		}
+		dmg_run(delta, &debug_flag);
 
 		// Something
 		//randomize(screen_get_fb());
@@ -120,6 +117,7 @@ int main(int argc, char** argv) {
 
 	dmg_load_bios(bios_path);
 	dmg_load_rom(rom_path);
+	
 	dmg_init();
 	
 	sdl_init();
