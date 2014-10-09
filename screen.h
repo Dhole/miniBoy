@@ -24,6 +24,6 @@
 #define SCREEN_FPS 59.73
 
 uint8_t *screen_get_fb();
-void screen_write_fb();
+//void screen_write_fb();
 void screen_start_frame();
 void screen_emulate(uint32_t cycles);

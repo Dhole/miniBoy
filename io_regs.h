@@ -57,25 +57,25 @@
 #define MASK_IO_LCDCONT_LCD_Display_Enable             0x01 << 7
 #define MASK_IO_LCDCONT_Window_Tile_Map_Display_Select 0x01 << 6
 #define MASK_IO_LCDCONT_Window_Display_Enable          0x01 << 5
-#define MASK_IO_LCDCONT_BGWindow_Title_Data_Select     0x01 << 4
-#define MASK_IO_LCDCONT_BG_Title_Map_Display_Select    0x01 << 3
+#define MASK_IO_LCDCONT_BGWindow_Tile_Data_Select      0x01 << 4
+#define MASK_IO_LCDCONT_BG_Tile_Map_Display_Select     0x01 << 3
 #define MASK_IO_LCDCONT_OBJ_Size                       0x01 << 2
 #define MASK_IO_LCDCONT_OBJ_Display_Enable             0x01 << 1
-#define MASK_IO_LCDCONT_BG_Display                     0x01 << 0
+#define MASK_IO_LCDCONT_BG_Display_Enable              0x01 << 0
 
 #define OPT_Window_Tile_Map_9800_9BFF     0
 #define OPT_Window_Tile_Map_9C00_9FFF     1
 #define OPT_BGWindow_Tile_Data_8800_97FF  0
 #define OPT_BGWindow_Tile_Data_8000_8FFF  1
-#define OPT_BG_Tile_Map_Display_9800_9BFF 0
-#define OPT_BG_Tile_Map_Display_9C00_9FFF 1
+#define OPT_BG_Tile_Map_9800_9BFF         0
+#define OPT_BG_Tile_Map_9C00_9FFF         1
 
 #define MASK_IO_LCDSTAT_LYC_LY_Coincidence_Interrupt 0x01 << 6
 #define MASK_IO_LCDSTAT_Mode_2_OAM_Interrupt         0x01 << 5
 #define MASK_IO_LCDSTAT_Mode_1_VBlank_Interrupt      0x01 << 4
 #define MASK_IO_LCDSTAT_Mode_0_HBlank_Interrupt      0x01 << 3
 #define MASK_IO_LCDSTAT_Coincidence_Flag             0x01 << 2
-#define MASK_IO_LCDSTAT_Mode_Flag                    (0x01 << 1) + (0x01 << 0)
+#define MASK_IO_LCDSTAT_Mode_Flag                   (0x01 << 1) + (0x01 << 0)
 
 #define OPT_LYC_neq_LY    0
 #define OPT_LYC_eq_LY     1

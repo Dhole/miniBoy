@@ -11,7 +11,7 @@
 Uint32 start_time, last_time, elapsed_time;
 Uint32 scale;
 int pause_emu;
-int debug_flag;
+int debug_flag, debug_pause;
 
 void usage(char *argv0) {
 	printf("Usage: %s [-v] [-d] [-b bios] rom\n", argv0);
@@ -33,6 +33,7 @@ event_t process_event(SDL_Event *e) {
 				break;
 			case KEY_ENTER_DEBUG:
 			        debug_flag = 1;
+				debug_pause = 1;
 				break;
 			case KEY_SCALE_1:
 				if (scale > 1) {
@@ -76,7 +77,7 @@ int main_loop(Uint32 delta) {
 		//keyboard_update_keys();
 		// Do sound or whatever
 		// ...
-		dmg_run(delta, &debug_flag);
+		dmg_run(delta, &debug_flag, &debug_pause);
 
 		// Something
 		//randomize(screen_get_fb());
@@ -105,6 +106,7 @@ int main(int argc, char** argv) {
 			break;
 		case 'd':
 			debug_flag = 1;
+			debug_pause = 1;
 			break;
 		default:
 		        usage(argv[0]);

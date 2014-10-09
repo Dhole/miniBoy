@@ -166,12 +166,17 @@ int run_com(command_t *com) {
         return 0;
 }
 
-int debug_run(int *debug_flag) {
+int debug_run(int *debug_flag, int *debug_pause) {
 	char *line;
 	command_t com;
 	int res;
 
 	regs = cpu_get_regs();
+
+	if (*debug_pause) {
+		state = DBG_IDLE;
+		*debug_pause = 0;
+	}
 	
 	switch(state) {
 	case DBG_IDLE:

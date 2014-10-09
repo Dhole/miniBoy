@@ -79,7 +79,7 @@ void dmg_reset() {
 	
 }
 
-void dmg_run(uint32_t delta, int *debug_flag) {
+void dmg_run(uint32_t delta, int *debug_flag, int *debug_pause) {
 	int clk, cycles;
 	//dmg_emulate_hardware(delta);
 	clk = 0;
@@ -91,7 +91,7 @@ void dmg_run(uint32_t delta, int *debug_flag) {
 		// if High to low p10-p13...
 
 		if (*debug_flag) {
-			cycles = debug_run(debug_flag);
+			cycles = debug_run(debug_flag, debug_pause);
 		} else {
 			cycles = cpu_step();	
 		}
@@ -101,5 +101,5 @@ void dmg_run(uint32_t delta, int *debug_flag) {
 			
 		clk += cycles;
 	}
-	screen_write_fb();
+	//screen_write_fb();
 }

@@ -1,22 +1,28 @@
 #include <SDL2/SDL.h>
 #include <ctype.h>
 #include <stdlib.h>
+
 #define NCOLORS 4
 #define WIDTH 160
 #define HEIGHT 144
+
 static uint8_t scale = 1;
-static uint32_t palette[NCOLORS];
+static uint32_t palette[NCOLORS + 1];
 static SDL_Window *window = NULL;
 static SDL_Surface *screen = NULL;
 static SDL_Surface *disp = NULL;
 static SDL_Rect stretch_rect;
+
 Uint32 rmask, gmask, bmask, amask;
+
 void sdl_setup_palette() {
+	palette[4] = SDL_MapRGB(screen->format, 0xFF, 0xFF, 0xFF);
 	palette[3] = SDL_MapRGB(screen->format, 0x00, 0x00, 0x00);
 	palette[2] = SDL_MapRGB(screen->format, 0x55, 0x55, 0x55);
 	palette[1] = SDL_MapRGB(screen->format, 0xAA, 0xAA, 0xAA);
 	palette[0] = SDL_MapRGB(screen->format, 0xFF, 0xFF, 0xFF);
 }
+
 int sdl_init() {
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
 	rmask = 0xff000000;
@@ -52,6 +58,7 @@ int sdl_init() {
 	sdl_setup_palette();
 	return 0;
 }
+
 void sdl_stop() {
 	SDL_FreeSurface(disp);
 	disp = NULL;
@@ -61,6 +68,7 @@ void sdl_stop() {
 	window = NULL;
 	SDL_Quit();
 }
+
 void sdl_change_scale(uint8_t s) {
 	scale = s;
 	stretch_rect.w = WIDTH * scale;
@@ -68,6 +76,7 @@ void sdl_change_scale(uint8_t s) {
 	SDL_SetWindowSize(window, WIDTH * scale, HEIGHT * scale);
 	screen = SDL_GetWindowSurface(window);
 }
+
 void sdl_render(uint8_t *fb) {
 	int i, j;
 	SDL_Rect pixel = {0, 0, 1, 1};
@@ -87,6 +96,7 @@ void sdl_render(uint8_t *fb) {
         }
 	SDL_UpdateWindowSurface(window);
 }
+
 void randomize(uint8_t *fb) {
 	int i, j;
 	for (i = 0; i < HEIGHT; i++) {
