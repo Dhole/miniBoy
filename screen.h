@@ -1,9 +1,9 @@
-#define SCREEN_INI_X 8
-#define SCREEN_INI_Y 16
+#define SCREEN_SPRITE_INI_X 8
+#define SCREEN_SPRITE_INI_Y 16
 #define SCREEN_SIZE_X 160
 #define SCREEN_SIZE_Y 144
-#define SCREEN_END_X SCREEN_INI_X + SCREEN_SIZE_X
-#define SCREEN_END_Y SCREEN_INI_Y + SCREEN_SIZE_Y
+#define SCREEN_SPRITE_END_X SCREEN_SPRITE_INI_X + SCREEN_SIZE_X
+#define SCREEN_SPRITE_END_Y SCREEN_SPRITE_INI_Y + SCREEN_SIZE_Y
 
 #define SCREEN_LINES 154
 
@@ -22,6 +22,19 @@
 #define SCREEN_TF_VBLANK SCREEN_DUR_LINE * SCREEN_SIZE_Y
 
 #define SCREEN_FPS 59.73
+
+#define MASK_OBJ_PRIORITY 0x01 << 7
+#define MASK_OBJ_Y_FLIP   0x01 << 6
+#define MASK_OBJ_X_FLIP   0x01 << 5
+#define MASK_OBJ_PALETTE  0x01 << 4
+
+typedef struct {
+	uint8_t id;
+	uint8_t x;
+	uint8_t y;
+	uint8_t pat;
+	uint8_t flags;
+} obj_t;
 
 uint8_t *screen_get_fb();
 //void screen_write_fb();

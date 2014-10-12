@@ -69,6 +69,8 @@
 #define OPT_BGWindow_Tile_Data_8000_8FFF  1
 #define OPT_BG_Tile_Map_9800_9BFF         0
 #define OPT_BG_Tile_Map_9C00_9FFF         1
+#define OPT_OBJ_Size_8x8                  0
+#define OPT_OBJ_Size_8x16                 1
 
 #define MASK_IO_LCDSTAT_LYC_LY_Coincidence_Interrupt 0x01 << 6
 #define MASK_IO_LCDSTAT_Mode_2_OAM_Interrupt         0x01 << 5

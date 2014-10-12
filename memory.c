@@ -71,6 +71,10 @@ uint8_t mem_bit_test(uint16_t addr, uint8_t bit) {
 }
 
 uint8_t mem_read_8(uint16_t addr) {
+	// Internal RAM echo
+	if (addr >= 0xE000 && addr < 0xFE00) {
+		return mm[addr - 2000];
+	}
 	return mm[addr];
 	// Handle IO mappings???
 }
@@ -82,7 +86,11 @@ uint16_t mem_read_16(uint16_t addr) {
 }
 
 void mem_write_8(uint16_t addr, uint8_t v) {
-	
+	// Internal RAM echo
+	if (addr >= 0xE000 && addr < 0xFE00) {
+		mm[addr - 2000] = v;
+		return;
+	}
 	// Handle IO mappings
 	if (addr == 0xFF50) {
 		//printf("SOMETHING HERE!!!\n");
@@ -90,10 +98,9 @@ void mem_write_8(uint16_t addr, uint8_t v) {
 			// Unmap ROM
 			mem_disable_bios();
 		}
-		mm[addr] = v;
-	} else {
-		mm[addr] = v;
+		
 	}
+	mm[addr] = v;
 }
 
 void mem_write_16(uint16_t addr, uint16_t v) {

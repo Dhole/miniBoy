@@ -12,8 +12,8 @@ CC = clang $(CFLAGS) $(DBGFLAGS)
 
 all: miniBoy
 
-miniBoy: sdl.o screen.o string_fun.o linenoise.o debugger.o lr35902.o dmg.o memory.o main.c
-	$(CC) sdl.o screen.o string_fun.o linenoise.o debugger.o lr35902.o dmg.o memory.o main.c -o miniBoy $(SDL)
+miniBoy: sdl.o screen.o string_fun.o insertion_sort.o linenoise.o debugger.o lr35902.o dmg.o memory.o main.c
+	$(CC) sdl.o screen.o string_fun.o insertion_sort.o linenoise.o debugger.o lr35902.o dmg.o memory.o main.c -o miniBoy $(SDL)
 
 lr35902.o: lr35902.c
 	$(CC) -c lr35902.c
@@ -33,6 +33,8 @@ linenoise.o: linenoise/linenoise.c
 string_fun.o: string_fun.c
 	$(CC) -c string_fun.c
 
+insertion_sort.o: insertion_sort.c
+	$(CC) -c insertion_sort.c
 screen.o: screen.c
 	$(CC) -c screen.c
 

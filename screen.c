@@ -4,6 +4,7 @@
 #include "io_regs.h"
 #include "screen.h"
 #include "memory.h"
+#include "insertion_sort.h"
 
 static uint8_t fb[160 * 144];
 static uint8_t bg_disp[256 * 256];
@@ -81,14 +82,19 @@ void screen_draw_line_fb(uint8_t line) {
 	for (i = 0; i < SCREEN_SIZE_X; i++) {
 		fb[line * SCREEN_SIZE_X + i] = bg_disp[line * 256 + i];
 		// Add ordering between win and obj!
-		if (win_disp[line * 256 + i] < 4) { // check non painted
+		// check non painted
+		if (win_disp[line * 256 + i] < 4) { 
 			fb[line * SCREEN_SIZE_X + i] = win_disp[line * 256 + i];
 		}
-		if (obj_disp[line * 256 + i] != 0) { // check transparency
-			fb[line * SCREEN_SIZE_X + i] = obj_disp[line * 256 + i];
+		// check transparency
+		if (obj_disp[(line + SCREEN_SPRITE_INI_Y) * 256 +
+			     i + SCREEN_SPRITE_INI_X] != 0) { 
+			fb[line * SCREEN_SIZE_X + i] =
+				obj_disp[(line + SCREEN_SPRITE_INI_Y) * 256 +
+				i + SCREEN_SPRITE_INI_X];
 		}
 	}
-	// Apply palette!!!
+	// Apply palette at end of each draw_line_{bg, win, obj} !!!
 }
 
 void dump_some_layer() {
@@ -207,9 +213,104 @@ void screen_draw_line_win(uint8_t line) {
 		}
 	}
 }
+// If a < b -> 1, else if a > b -> 0
+int obj_comp(void *array, int i, int j) {
+	obj_t *a = ((obj_t**)array)[i];
+	obj_t *b = ((obj_t**)array)[j];
+	// Compare x position
+	if (a->x < b->x) {
+		return 0;
+	}
+	if (a->x > b->x) {
+		return 1;
+	}
+	// Compare order in table
+	if (a->id < b->id) {
+		return 0;
+	}
+	if (a->id > b->id) {
+		return 1;
+	}
+	// This should never be reached
+	return 0;
+}
+
+void obj_swap(void *array, int i, int j) {
+	obj_t *a = ((obj_t**)array)[i];
+	obj_t *b = ((obj_t**)array)[j];
+
+	((obj_t**)array)[i] = b;
+	((obj_t**)array)[j] = a;
+}
 
 void screen_draw_line_obj(uint8_t line) {
-	
+	// 8x8 or 8x16
+	// Object Patern Table = 8000 - 8FFF
+	// Object Atribute Table = FE00 - FE9F
+	// 10 sprites per scan line
+	// higher X -> draw first (lower X -> draw above others)
+	// same X -> FE00 highest, FE04 next highest
+	// Y = 0 or Y => 144+16, discard sprite
+
+	int i, j, first;
+	uint8_t addr, obj_height, objs_line_len, obj_line;
+	uint8_t obj_line_a, obj_line_b;
+	obj_t objs[40];
+	obj_t *objs_line[40];
+
+	line += SCREEN_SPRITE_INI_Y;
+
+	switch (mem_bit_test(IO_LCDCONT, MASK_IO_LCDCONT_OBJ_Size)) {
+	case OPT_OBJ_Size_8x8:
+		obj_height = 8;
+		break;
+	case OPT_OBJ_Size_8x16:
+		obj_height = 16;
+		break;
+	}
+	// Read all the obj attributes
+	for (i = 0; i < 40; i++) {
+		addr = 0xFE00 + i * 4;
+
+		objs[i].id = i;
+		objs[i].y = mem_read_8(addr++);
+		objs[i].x = mem_read_8(addr++);
+		objs[i].pat = mem_read_8(addr++);
+		objs[i].flags = mem_read_8(addr);
+	}
+
+	// Take the candidate objects to be drawn in the line
+	objs_line_len = 0;
+	for (i = 0; i < 40; i++) {
+		if(objs[i].y != 0 && objs[i].y < SCREEN_SPRITE_END_Y &&
+		   objs[i].y <= line && (objs[i].y + obj_height) > line) {
+			objs_line[objs_line_len++] = &objs[i];
+		}
+	}
+
+	// Sort the candidate objects by priority
+	insertion_sort(objs_line, objs_line_len, obj_comp, obj_swap);
+
+	// Draw objects by order of priority
+	if (objs_line_len > 10) {
+		first = objs_line_len - 10;
+	} else {
+		first = 0;
+	}
+
+	// Only taking into account 8x8!!!
+	for (i = first; i < objs_line_len; i++) {
+		obj_line = (line - objs_line[i]->y) % obj_height;
+		obj_line_a = mem_read_8(0x8000 + objs_line[i]->pat * 16 +
+					obj_line * 2);
+		obj_line_b = mem_read_8(0x8000 + objs_line[i]->pat * 16 +
+					obj_line * 2 + 1);
+		for (j = 0; j < 8; j++) {
+			obj_disp[line * 256 + (objs_line[i]->x + j) % 256] =
+				((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
+				((obj_line_b & (1 << (7 - j))) ? 2 : 0);
+		}
+	}
 }
 
 void screen_draw_line(uint8_t line) {
