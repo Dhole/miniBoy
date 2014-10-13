@@ -100,6 +100,10 @@ void mem_write_8(uint16_t addr, uint8_t v) {
 		}
 		
 	}
+	// print debug serial transfer
+	if (addr == IO_SIODATA) {
+		printf("%c", v);
+	}
 	mm[addr] = v;
 }
 
