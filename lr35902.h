@@ -49,4 +49,4 @@ int cpu_step();
 void cpu_dump_reg();
 regs_t *cpu_get_regs();
 uint8_t disas_op(uint16_t off);
-
+uint8_t get_flag(flag_t f);

@@ -10,7 +10,10 @@ endif
 
 CC = clang $(CFLAGS) $(DBGFLAGS)
 
-all: miniBoy
+all: miniBoy lr35902_test
+
+lr35902_test: lr35902.o memory.o string_fun.o lr35902_test.c
+	clang lr35902.o memory.o string_fun.o lr35902_test.c -o lr35902_test
 
 miniBoy: sdl.o screen.o string_fun.o insertion_sort.o linenoise.o debugger.o lr35902.o dmg.o memory.o main.c
 	$(CC) sdl.o screen.o string_fun.o insertion_sort.o linenoise.o debugger.o lr35902.o dmg.o memory.o main.c -o miniBoy $(SDL)

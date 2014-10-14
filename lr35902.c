@@ -91,6 +91,14 @@ void exec_op(uint8_t n) {
 		mem_write_8(*(uint16_t*)ops[n].a, tmp);
 		break;
 	case MEM_RW_16:
+		tmp = mem_read_8(*(uint16_t*)ops[n].a);
+		//printf("op: %x\n", n);
+		//printf(">before: %x\n", tmp);
+		ops[n].handler(&tmp, ops[n].b);
+		//printf(">after: %x\n", tmp);
+		mem_write_8(*(uint16_t*)ops[n].a, tmp);
+		
+		break;
 	case NONE:
 		ops[n].handler(ops[n].a, ops[n].b);
 		break;
@@ -170,7 +178,7 @@ void op_ldi(void *_a, void *_b) {
 	}
 	
 	exec_op(0x23);
-	regs.PC -= ops[0x2B].length;
+	regs.PC -= ops[0x23].length;
 }
 
 // BUG!!!, HL- happens before the exec_op() stores the result
@@ -330,10 +338,12 @@ void op_cp(void *_a, void *_b) {
 
 void op_inc_8(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
+	//printf("before: %x\n", *a);
 	(*a)++;
+	//printf("after: %x\n", *a);
 	set_flag_Z(a);
 	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, (*a == 0x00) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x01) == 0x00) ? 1 : 0);
 }
 
 void op_inc_16(void *_a, void *_b) {
@@ -346,7 +356,7 @@ void op_dec_8(void *_a, void *_b) {
 	(*a)--;
 	set_flag_Z(a);
 	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, (*a == 0xFF) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x01) == 0x0F) ? 0 : 1);
 }
 
 void op_dec_16(void *_a, void *_b) {
@@ -780,8 +790,8 @@ SET_OP(0x30, "JR NC,r8", op_jr, &C_NC, imm_8, NONE, 2, 8, 12);
 SET_OP(0x31, "LD SP,d16", op_ld_16, regs.SP, imm_16, NONE, 3, 12, 0);
 SET_OP(0x32, "LD (HL-),A", op_ldd, regs.HL, regs.A, NONE, 1, 8, 0);
 SET_OP(0x33, "INC SP", op_inc_16, regs.SP, NULL, NONE, 1, 8, 0);
-SET_OP(0x34, "INC (HL)", op_inc_8, regs.HL, NULL, MEM_W_16, 1, 12, 0);
-SET_OP(0x35, "DEC (HL)", op_dec_8, regs.HL, NULL, MEM_W_16, 1, 12, 0);
+SET_OP(0x34, "INC (HL)", op_inc_8, regs.HL, NULL, MEM_RW_16, 1, 12, 0);
+SET_OP(0x35, "DEC (HL)", op_dec_8, regs.HL, NULL, MEM_RW_16, 1, 12, 0);
 SET_OP(0x36, "LD (HL),d8", op_ld_8, regs.HL, imm_8, MEM_W_16, 2, 12, 0);
 SET_OP(0x37, "SCF", op_scf, NULL, NULL, NONE, 1, 4, 0);
 SET_OP(0x38, "JR C,r8", op_jr, &C_C, imm_8, NONE, 2, 8, 12);
