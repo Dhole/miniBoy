@@ -225,6 +225,48 @@ int main() {
 	test_reset(); test_op_nop();
 	test_reset(); test_op_ld_8();
 	test_reset(); test_op_ldi();
+	// dec_8
+	// ld_8
+	// ld_16
+	// ldd
+	// ldhl
+	// add_8
+	// add_16
+	// addsp
+	// adc
+	// sub
+	// sbc
+	// and
+	// xor
+	// or
+	// cp
+	// ccf
+	// scf
+	// rlca
+	// rla
+	// rrca
+	// rra
+	// push
+	// pop
+	// jp
+	// jr
+	// call
+	// ret
+	// rst
+	// cpl
+	// daa
+	// CB ...
+	// rlc
+	// rrc
+	// rl
+	// rr
+	// sla
+	// sra
+	// swap
+	// srl
+	// bit
+	// res
+	// set
 
 	printf("All tests passed\n");
 	
