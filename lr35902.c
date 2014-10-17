@@ -343,7 +343,7 @@ void op_inc_8(void *_a, void *_b) {
 	//printf("after: %x\n", *a);
 	set_flag_Z(a);
 	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, ((*a & 0x01) == 0x00) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x0F) == 0x00) ? 1 : 0);
 }
 
 void op_inc_16(void *_a, void *_b) {
@@ -355,8 +355,8 @@ void op_dec_8(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	(*a)--;
 	set_flag_Z(a);
-	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, ((*a & 0x01) == 0x0F) ? 0 : 1);
+	set_flag(N_FLAG, 1);
+	set_flag(H_FLAG, ((*a & 0x0F) == 0x0F) ? 1 : 0);
 }
 
 void op_dec_16(void *_a, void *_b) {

@@ -160,8 +160,38 @@ void test_op_inc_8() {
 	set_HL(0x12);
 	cpu_step();
 	ass_mm(0x12, 0x0);
-	ass_flagsZNHC(1, 0, 1, 0);
-	
+	ass_flagsZNHC(1, 0, 1, 0);	
+}
+
+void test_op_dec_8() {
+	mem_write_8(0, 0x05);
+	mem_write_8(1, 0x15);
+	mem_write_8(2, 0x0D);
+
+	mem_write_8(3, 0x35);
+	mem_write_8(4, 0x35);
+	mem_write_8(5, 0x35);
+
+	set_B(0x5);
+	set_D(0x10);
+	set_C(0x0);
+
+	mem_write_8(0x10, 0x5);
+	mem_write_8(0x11, 0x10);
+	mem_write_8(0x12, 0x1);
+
+	cpu_step();
+	ass_B(0x4);
+	ass_flagsZNHC(0, 1, 0, 0);
+
+	cpu_step();
+	//printf("%2x \n", *(regs->D));
+	ass_D(0xf);
+	ass_flagsZNHC(0, 1, 1, 0);
+
+	cpu_step();
+	ass_C(0xff);
+	ass_flagsZNHC(0, 1, 1, 0);
 }
 
 void test_op_ld_8() {
@@ -226,7 +256,7 @@ int main() {
 	test_reset(); test_op_ld_8();
 	test_reset(); test_op_ldi();
 	// dec_8
-	// ld_8
+	test_reset(); test_op_dec_8();
 	// ld_16
 	// ldd
 	// ldhl
