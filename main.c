@@ -141,7 +141,8 @@ int main(int argc, char** argv) {
 		if (SDL_GetTicks() - start_time < time)  {
 			SDL_Delay(time - (SDL_GetTicks() - start_time));
 		} else {
-			frame = 0;
+			time = 0;
+			frame = 1;
 			start_time = SDL_GetTicks();
 		}
 		frame++;
