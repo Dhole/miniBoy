@@ -6,6 +6,10 @@
 #include "memory.h"
 #include "io_regs.h"
 
+// temporary
+#include <assert.h>
+#include "lr35902.h"
+
 
 static uint8_t mm[MEM_SIZE];
 
@@ -101,9 +105,20 @@ void mem_write_8(uint16_t addr, uint8_t v) {
 		
 	}
 	// print debug serial transfer
-	if (addr == IO_SIODATA) {
-		printf("%c", v);
+	//if (addr == IO_SIODATA) {
+		//printf("%c", v);
+	//}
+	if ((addr == IO_SIOCONT) && (v & MASK_IO_SIOCONT_Start_Flag)) {
+		// Set bit for transfer complete
+		mm[addr] = v;
+		printf("%c", mem_read_8(IO_SIODATA));
+		//printf("\n");
+		//assert(1 == 2);
+		mem_bit_unset(IO_SIOCONT, MASK_IO_SIOCONT_Start_Flag);
+		return;
 	}
+	//printf("hey\n");
+
 	mm[addr] = v;
 }
 

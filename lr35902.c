@@ -437,12 +437,18 @@ void op_ei(void *_a, void *_b) {
 void op_push(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
 	*regs.SP -= 2;
-	mem_write_16(*regs.SP, *a);
+	//mem_write_16(*regs.SP, *a);
+	// which one is the good one???
+	mem_write_8(*regs.SP+1, (uint8_t)(*a & 0x00FF));
+	mem_write_8(*regs.SP, (uint8_t)((*a & 0xFF00) >> 8));
 }
 
 void op_pop(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
-	*a = mem_read_16(*regs.SP);
+	//*a = mem_read_16(*regs.SP);
+	// which one is the good one???
+	*a = ((uint16_t)mem_read_8(*regs.SP) << 8) +
+		(uint16_t)mem_read_8(*regs.SP+1);
 	*regs.SP += 2;
 }
 
@@ -971,7 +977,7 @@ SET_OP(0xE5, "PUSH HL", op_push, regs.HL, NULL, NONE, 1, 16, 0);
 SET_OP(0xE6, "AND d8", op_and, regs.A, imm_8, NONE, 2, 8, 0);
 SET_OP(0xE7, "RST 20H", op_rst, &C_20H, NULL, NONE, 1, 16, 0);
 SET_OP(0xE8, "ADD SP,r8", op_addsp, regs.SP, imm_8, NONE, 2, 16, 0);
-SET_OP(0xE9, "JP (HL)", op_jp, NULL, regs.HL, MEM_R_16, 1, 4, 0);
+SET_OP(0xE9, "JP (HL)", op_jp, NULL, regs.HL, NONE, 1, 4, 0);
 SET_OP(0xEA, "LD (a16),A", op_ld_8, imm_16, regs.A, MEM_W_16, 3, 16, 0);
 SET_OP(0xEB, "-", op_undef, NULL, NULL, NONE, 1, 0, 0);
 SET_OP(0xEC, "-", op_undef, NULL, NULL, NONE, 1, 0, 0);

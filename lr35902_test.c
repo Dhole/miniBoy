@@ -246,6 +246,144 @@ void test_op_ldi() {
 	ass_PC(4);
 }
 
+void test_op_add_8() {
+	mem_write_8(0, 0x80);
+	mem_write_8(1, 0x81);
+	mem_write_8(2, 0x82);
+	mem_write_8(3, 0x86);
+	mem_write_8(4, 0xC6);
+	mem_write_8(5, 0x13);
+	
+	set_HL(0x06);
+	mem_write_8(6, 0xF1);
+
+	set_A(0x0D);
+	set_B(0x02);
+	set_C(0x01);
+	set_D(0xFF);	
+
+	cpu_step();
+	ass_A(0x0F);
+	ass_flagsZNHC(0, 0, 0, 0);
+
+	cpu_step();
+	ass_A(0x10);
+	ass_flagsZNHC(0, 0, 1, 0);
+
+	cpu_step();
+	ass_A(0x0F);
+	ass_flagsZNHC(0, 0, 0, 1);
+
+	cpu_step();
+	ass_A(0x00);
+	ass_flagsZNHC(1, 0, 1, 1);
+
+	cpu_step();
+	ass_A(0x13);
+	ass_flagsZNHC(0, 0, 0, 0);
+}
+
+void test_op_sub_8() {
+	mem_write_8(0, 0x90);
+	mem_write_8(1, 0x91);
+	mem_write_8(2, 0x92);
+	mem_write_8(3, 0x96);
+	mem_write_8(4, 0xD6);
+	mem_write_8(5, 0xE0);
+
+	set_HL(0x06);
+	mem_write_8(6, 0x10);
+
+	set_A(0x12);
+	set_B(0x02);
+	set_C(0x01);
+	set_D(0x0F);
+
+	cpu_step();
+	ass_A(0x10);
+	ass_flagsZNHC(0, 1, 0, 0);
+
+	cpu_step();
+	ass_A(0x0F);
+	ass_flagsZNHC(0, 1, 1, 0);
+
+	cpu_step();
+	ass_A(0x00);
+	ass_flagsZNHC(1, 1, 0, 0);
+
+	cpu_step();
+	ass_A(0xF0);
+	ass_flagsZNHC(0, 1, 0, 1);
+
+	cpu_step();
+	ass_A(0x10);
+	ass_flagsZNHC(0, 1, 0, 0);
+}
+
+void test_op_and() {
+	mem_write_8(0, 0xA0);
+	mem_write_8(1, 0xA1);
+	mem_write_8(2, 0xA6);
+	mem_write_8(3, 0xE6);
+	mem_write_8(4, 0x11);
+
+	set_HL(0x05);
+	mem_write_8(5, 0x10);
+
+	set_A(0xFE);
+	set_B(0x0F);
+	set_C(0x03);
+
+	cpu_step();
+	ass_A(0x0E);
+	ass_flagsZNHC(0, 0, 1, 0);
+
+	cpu_step();
+	ass_A(0x02);
+	ass_flagsZNHC(0, 0, 1, 0);
+
+	cpu_step();
+	ass_A(0x00);
+	ass_flagsZNHC(1, 0, 1, 0);
+
+	set_A(0xF0);
+	
+	cpu_step();
+	ass_A(0x10);
+	ass_flagsZNHC(0, 0, 1, 0);
+}
+
+void test_op_or() {
+	mem_write_8(0, 0xB0);
+	mem_write_8(1, 0xB1);
+	mem_write_8(2, 0xB6);
+	mem_write_8(3, 0xF6);
+	mem_write_8(4, 0xC0);
+
+	set_HL(0x05);
+	mem_write_8(5, 0x2E);
+
+	set_A(0x00);
+	set_B(0x00);
+	set_C(0x11);
+
+	cpu_step();
+	ass_A(0x00);
+	ass_flagsZNHC(1, 0, 0, 0);
+
+	cpu_step();
+	ass_A(0x11);
+	ass_flagsZNHC(0, 0, 0, 0);
+
+	cpu_step();
+	ass_A(0x3F);
+	ass_flagsZNHC(0, 0, 0, 0);
+
+	cpu_step();
+	ass_A(0xFF);
+	ass_flagsZNHC(0, 0, 0, 0);
+}
+
 int main() {
 	test_init();
 
@@ -255,20 +393,19 @@ int main() {
 	test_reset(); test_op_nop();
 	test_reset(); test_op_ld_8();
 	test_reset(); test_op_ldi();
-	// dec_8
 	test_reset(); test_op_dec_8();
 	// ld_16
 	// ldd
 	// ldhl
-	// add_8
+	test_reset(); test_op_add_8();
 	// add_16
 	// addsp
 	// adc
-	// sub
+	test_reset(); test_op_sub_8();
 	// sbc
-	// and
+	test_reset(); test_op_and();
 	// xor
-	// or
+	test_reset(); test_op_or();
 	// cp
 	// ccf
 	// scf

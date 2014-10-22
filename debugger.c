@@ -27,6 +27,7 @@ static uint8_t break_points[MEM_SIZE];
 static regs_t *regs;
 static dbg_state_t state;
 static int rem_steps;
+static command_t com;
 
 void com_help() {
 	printf("\n    -= miniBoy debugger commands: =-\n\n"
@@ -168,7 +169,6 @@ int run_com(command_t *com) {
 
 int debug_run(int *debug_flag, int *debug_pause) {
 	char *line;
-	command_t com;
 	int res;
 
 	regs = cpu_get_regs();
@@ -192,6 +192,7 @@ int debug_run(int *debug_flag, int *debug_pause) {
 		break;
 	case DBG_CONT:
 		if (break_points[regs->PC]) {
+			disas_op(regs->PC);
 			state = DBG_IDLE;
 			break;
 		} else {
@@ -217,6 +218,9 @@ int debug_run(int *debug_flag, int *debug_pause) {
 		} else if (res == 0) {
 			continue;
 		} else {
+			if (state == DBG_CONT) {
+				return cpu_step();
+			}
 			return 0;
 		}
 	}

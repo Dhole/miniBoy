@@ -101,3 +101,6 @@
 #define MASK_IO_INT_Timer_Overflow         0x01 << 2
 #define MASK_IO_INT_LCDSTAT_Int            0x01 << 1
 #define MASK_IO_INT_VBlank                 0x01 << 0
+
+#define MASK_IO_SIOCONT_Start_Flag 0x01 << 7
+#define MASK_IO_SIOCONT_IO_Select  0x01 << 0
