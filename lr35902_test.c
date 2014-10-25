@@ -384,6 +384,17 @@ void test_op_or() {
 	ass_flagsZNHC(0, 0, 0, 0);
 }
 
+void test_op_xor() {
+	mem_write_8(0, 0xEE);
+	mem_write_8(1, 0x00);
+
+	set_A(0xCC);
+
+	cpu_step();
+	ass_A(0xCC);
+	ass_flagsZNHC(0, 0, 0, 0);
+}
+
 int main() {
 	test_init();
 
@@ -404,7 +415,7 @@ int main() {
 	test_reset(); test_op_sub_8();
 	// sbc
 	test_reset(); test_op_and();
-	// xor
+	test_reset(); test_op_xor();
 	test_reset(); test_op_or();
 	// cp
 	// ccf

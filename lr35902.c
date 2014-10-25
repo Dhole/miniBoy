@@ -258,8 +258,12 @@ void op_adc(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
 	// CHECK THIS!!!
-	set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F)) ? 1 : 0);
-	set_flag(C_FLAG, (*a > (0xFF - *b)) ? 1 : 0);
+	//set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F)) ? 1 : 0);
+	//set_flag(C_FLAG, (*a > (0xFF - *b)) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x0F) + (*b & 0x0F) +
+			  get_flag(C_FLAG) > 0x0F) ? 1 : 0);
+	set_flag(C_FLAG, ((uint16_t)*a + (uint16_t)*b +
+			  (uint16_t)get_flag(C_FLAG) > 0x00FF) ? 1 : 0);
 	
 	*a += *b + get_flag(C_FLAG);
 
@@ -284,8 +288,12 @@ void op_sbc(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
 	// CHECK THIS!!!
-	set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F)) ? 1 : 0);
-	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
+	//set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F)) ? 1 : 0);
+	//set_flag(C_FLAG, (*a < *b) ? 1 : 0);
+	set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F) +
+			  get_flag(C_FLAG)) ? 1 : 0);
+	set_flag(C_FLAG, ((uint16_t)*a < (uint16_t)*b +
+			  get_flag(C_FLAG)) ? 1 : 0);
 	
 	*a -= *b + get_flag(C_FLAG);
 
@@ -331,8 +339,8 @@ void op_cp(void *_a, void *_b) {
 	uint8_t *b = (uint8_t*)_b;
 	
 	set_flag(Z_FLAG, (*a == *b) ? 1 : 0);
-	set_flag(N_FLAG, 0);
-	set_flag(H_FLAG, ((*a & 0x0F) > (0x0F - (*b & 0x0F))) ? 1 : 0);
+	set_flag(N_FLAG, 1);
+	set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F)) ? 1 : 0);
 	set_flag(C_FLAG, (*a < *b) ? 1 : 0);
 }
 
@@ -449,6 +457,9 @@ void op_pop(void *_a, void *_b) {
 	// which one is the good one???
 	*a = ((uint16_t)mem_read_8(*regs.SP) << 8) +
 		(uint16_t)mem_read_8(*regs.SP+1);
+	if (a == regs.AF) {
+		*regs.F &= 0xF0;
+	}
 	*regs.SP += 2;
 }
 
@@ -561,34 +572,22 @@ void op_cpl(void *_a, void *_b) {
 		
 void op_daa(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
-	uint8_t up = (*a & 0xF0) >> 4;
-	uint8_t lo = *a & 0x0F;
-	if (BCD_COND(0, 0, 0x9, 0, 0x0, 0x9)) {
-		set_flag(C_FLAG, 0);
-	} else if (BCD_COND(0, 0x0, 0x8, 0, 0xA, 0xF) ||
-		   BCD_COND(0, 0x0, 0x9, 1, 0x0, 0x3)) {
-		*a += 0x06;
-		set_flag(C_FLAG, 0);
-	} else if (BCD_COND(0, 0xA, 0xF, 0, 0x0, 0x9) ||
-		   BCD_COND(1, 0x0, 0x2, 0, 0x0, 0x9)) {
-		*a += 0x60;
-		set_flag(C_FLAG, 1);
-	} else if (BCD_COND(0, 0x9, 0xF, 0, 0xA, 0xF) ||
-		   BCD_COND(0, 0xA, 0xF, 1, 0x0, 0x3) ||
-		   BCD_COND(1, 0x0, 0x2, 0, 0xA, 0xF) ||
-		   BCD_COND(1, 0x0, 0x3, 1, 0x0, 0x3)) {
-		*a += 0x66;
-		set_flag(C_FLAG, 1);
-	} else if (BCD_COND(0, 0x0, 0x8, 1, 0x6, 0xF)) {
-		*a += 0xFA;
-		set_flag(C_FLAG, 0);
-	} else if (BCD_COND(1, 0x7, 0xF, 0, 0x0, 0x9)) {
-		*a += 0xA0;
-		set_flag(C_FLAG, 1);
-	} else if (BCD_COND(1, 0x6, 0xF, 1, 0x6, 0xF)) {
-		*a += 0x9A;
-		set_flag(C_FLAG, 1);
+	//uint8_t up = (*a & 0xF0) >> 4;
+	//uint8_t lo = *a & 0x0F;
+        uint8_t corr = 0;
+
+	corr |= get_flag(H_FLAG) ? 0x06 : 0x00;
+	corr |= get_flag(C_FLAG) ? 0x60 : 0x00;
+
+	if (get_flag(N_FLAG)) {
+		*a -= corr;
+	} else {
+		corr |= ((*a & 0x0F) > 0x09) ? 0x06 : 0x00;
+		corr |= *a < 0x99 ? 0x60 : 0x00;
+		*a += corr;
 	}
+
+	set_flag(C_FLAG, corr & 0x60);
         set_flag_Z(a);
 	set_flag(H_FLAG, 0);
 }
@@ -783,7 +782,7 @@ SET_OP(0x23, "INC HL", op_inc_16, regs.HL, NULL, NONE, 1, 8, 0);
 SET_OP(0x24, "INC H", op_inc_8, regs.H, NULL, NONE, 1, 4, 0);
 SET_OP(0x25, "DEC H", op_dec_8, regs.H, NULL, NONE, 1, 4, 0);
 SET_OP(0x26, "LD H,d8", op_ld_8, regs.H, imm_8, NONE, 2, 8, 0);
-SET_OP(0x27, "DAA", op_daa, NULL, NULL, NONE, 1, 4, 0);
+SET_OP(0x27, "DAA", op_daa, regs.A, NULL, NONE, 1, 4, 0);
 SET_OP(0x28, "JR Z,r8", op_jr, &C_Z, imm_8, NONE, 2, 8, 12);
 SET_OP(0x29, "ADD HL,HL", op_add_16, regs.HL, regs.HL, NONE, 1, 8, 0);
 SET_OP(0x2A, "LD A,(HL+)", op_ldi, regs.A, regs.HL, NONE, 1, 8, 0);
