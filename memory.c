@@ -15,8 +15,8 @@ static uint8_t mm[MEM_SIZE];
 
 static uint8_t *bios;
 static uint8_t *rom;
-static unsigned int bios_size;
-static unsigned int rom_size;
+static unsigned int bios_size = 0;
+static unsigned int rom_size = 0;
 // Maybe add mem_init to set the pointers to NULL???
 
 void mem_load(uint16_t addr, uint8_t *buf, unsigned int size) {

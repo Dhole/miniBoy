@@ -1,7 +1,12 @@
+/*
+ * Special thanks to tpw_rules from #gbdev for helping spotting some bugs
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "lr35902.h"
 #include "memory.h"
 #include "string_fun.h"
@@ -257,15 +262,16 @@ void op_addsp(void *_a, void *_b) {
 void op_adc(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
+	uint8_t c = get_flag(C_FLAG);
 	// CHECK THIS!!!
 	//set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F)) ? 1 : 0);
 	//set_flag(C_FLAG, (*a > (0xFF - *b)) ? 1 : 0);
 	set_flag(H_FLAG, ((*a & 0x0F) + (*b & 0x0F) +
-			  get_flag(C_FLAG) > 0x0F) ? 1 : 0);
+		 get_flag(C_FLAG) > 0x0F) ? 1 : 0);
 	set_flag(C_FLAG, ((uint16_t)*a + (uint16_t)*b +
 			  (uint16_t)get_flag(C_FLAG) > 0x00FF) ? 1 : 0);
 	
-	*a += *b + get_flag(C_FLAG);
+	*a += *b + c;
 
         set_flag_Z(a);
 	set_flag(N_FLAG, 0);
@@ -287,6 +293,7 @@ void op_sub(void *_a, void *_b) {
 void op_sbc(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 	uint8_t *b = (uint8_t*)_b;
+	uint8_t c = get_flag(C_FLAG);
 	// CHECK THIS!!!
 	//set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F)) ? 1 : 0);
 	//set_flag(C_FLAG, (*a < *b) ? 1 : 0);
@@ -295,7 +302,7 @@ void op_sbc(void *_a, void *_b) {
 	set_flag(C_FLAG, ((uint16_t)*a < (uint16_t)*b +
 			  get_flag(C_FLAG)) ? 1 : 0);
 	
-	*a -= *b + get_flag(C_FLAG);
+	*a -= *b + c;
 
         set_flag_Z(a);
 	set_flag(N_FLAG, 1);
@@ -389,22 +396,20 @@ void op_scf(void *_a, void *_b) {
 }
 
 void op_rlca(void *_a, void *_b) {
-	uint8_t b7 = (*regs.A & 0x80) >> 7;
-	*regs.A = *regs.A << 1;
-	*regs.A += b7;
+	uint8_t b7 = *regs.A >> 7;
+	*regs.A = *regs.A << 1 | b7;
 
-	set_flag_Z(regs.A);
+	set_flag(Z_FLAG, 0);
 	set_flag(N_FLAG, 0);
 	set_flag(H_FLAG, 0);
 	set_flag(C_FLAG, b7);
 }
 
 void op_rla(void *_a, void *_b) {
-	uint8_t b7 = (*regs.A & 0x80) >> 7;
-	*regs.A = *regs.A << 1;
-	*regs.A += (*regs.F & C_FLAG) >> 4;
+	uint8_t b7 = *regs.A >> 7;
+	*regs.A = *regs.A << 1 | get_flag(C_FLAG);
 
-	set_flag_Z(regs.A);
+	set_flag(Z_FLAG, 0);
 	set_flag(N_FLAG, 0);
 	set_flag(H_FLAG, 0);
 	set_flag(C_FLAG, b7);
@@ -413,10 +418,9 @@ void op_rla(void *_a, void *_b) {
 
 void op_rrca(void *_a, void *_b) {
 	uint8_t b0 = *regs.A & 0x01;
-	*regs.A = *regs.A >> 1;
-	*regs.A += b0 << 7;
+	*regs.A = *regs.A >> 1 | b0 << 7;
 
-	set_flag_Z(regs.A);
+	set_flag(Z_FLAG, 0);
 	set_flag(N_FLAG, 0);
 	set_flag(H_FLAG, 0);
 	set_flag(C_FLAG, b0);
@@ -424,10 +428,9 @@ void op_rrca(void *_a, void *_b) {
 
 void op_rra(void *_a, void *_b) {
         uint8_t b0 = *regs.A & 0x01;
-	*regs.A = *regs.A >> 1;
-	*regs.A += ((*regs.F & C_FLAG) >> 4) << 7;
+	*regs.A = *regs.A >> 1 | get_flag(C_FLAG) << 7;
 
-	set_flag_Z(regs.A);
+	set_flag(Z_FLAG, 0);
 	set_flag(N_FLAG, 0);
 	set_flag(H_FLAG, 0);
 	set_flag(C_FLAG, b0);
@@ -572,24 +575,51 @@ void op_cpl(void *_a, void *_b) {
 		
 void op_daa(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
+
+	/*
+	uint16_t a_cpy = *a;
 	//uint8_t up = (*a & 0xF0) >> 4;
 	//uint8_t lo = *a & 0x0F;
+
+	if (get_flag(N_FLAG)) {
+		if (get_flag(H_FLAG)) {
+			a_cpy = (a_cpy - 0x06) & 0xFF;
+		}
+		if (get_flag(C_FLAG)) {
+			a_cpy -= 0x60;
+		}
+	} else {
+		if (get_flag(H_FLAG) || (a_cpy & 0x0F) > 9) {
+			a_cpy += 0x06;
+		}
+		if (get_flag(C_FLAG) || a_cpy > 0x9F) {
+			a_cpy += 0x60;
+		}
+	}
+
+	set_flag(C_FLAG, (a_cpy & 0x100) == 0x100);
+	set_flag(H_FLAG, 0);
+
+	*a = a_cpy;
+	
+	set_flag_Z(a);	
+	*/
+	
         uint8_t corr = 0;
 
-	corr |= get_flag(H_FLAG) ? 0x06 : 0x00;
-	corr |= get_flag(C_FLAG) ? 0x60 : 0x00;
-
+	corr |= get_flag(H_FLAG) || ((*a & 0x0F) > 0x09) ? 0x06 : 0x00;
+	corr |= get_flag(C_FLAG) || *a > 0x99 ? 0x60 : 0x00;
+	
 	if (get_flag(N_FLAG)) {
 		*a -= corr;
 	} else {
-		corr |= ((*a & 0x0F) > 0x09) ? 0x06 : 0x00;
-		corr |= *a < 0x99 ? 0x60 : 0x00;
 		*a += corr;
 	}
 
-	set_flag(C_FLAG, corr & 0x60);
+	set_flag(C_FLAG, (corr << 2 & 0x100) ? 1 : 0);
         set_flag_Z(a);
 	set_flag(H_FLAG, 0);
+	
 }
 
 void op_stop(void *_a, void *_b) {
@@ -684,7 +714,12 @@ void op_sra(void *_a, void *_b) {
 
 void op_swap(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
-	*a = (*a << 4) + (*a & 0xF0 >> 4);
+	*a = (*a << 4) + ((*a & 0xF0) >> 4);
+
+	set_flag_Z(a);
+	set_flag(N_FLAG, 0);
+	set_flag(H_FLAG, 0);
+	set_flag(C_FLAG, 0);
 }
 
 void op_srl(void *_a, void *_b) {

@@ -196,6 +196,12 @@ int debug_run(int *debug_flag, int *debug_pause) {
 			state = DBG_IDLE;
 			break;
 		} else {
+			/*
+			if (mem_read_8(regs->PC) == 0x07) {
+				state = DBG_IDLE;
+				break;
+			}
+			*/
 			return cpu_step();
 		}
 		break;
