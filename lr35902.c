@@ -35,7 +35,9 @@ static uint16_t *imm_16 = (uint16_t*)&imm_val;
 static uint8_t *imm_8 = (uint8_t*)&imm_val;
 
 static uint8_t tmp;
-static uint8_t ext_cycles = 0;
+static uint8_t ext_cycles;
+static uint8_t int_count;
+static uint8_t int_opt;
 
 static inst_t ops[256];
 static inst_t ops_cb[256];
@@ -135,7 +137,7 @@ void exec_op_cb(uint8_t n) {
 	}
 }
 
-void set_flag(flag_t f, uint8_t v) {
+void set_flag(flag_t f, int v) {
 	if (v) {
 		*regs.F |= f;
 	} else {
@@ -208,13 +210,19 @@ void op_ldd(void *_a, void *_b) {
 void op_ldhl(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
 	int8_t *b = (int8_t*)_b;
+
+	if (*b >= 0) {
+		set_flag(H_FLAG, ((*a & 0x0F) > (0x0F - (*b & 0x0F))) ? 1 : 0);
+		set_flag(C_FLAG, ((*a & 0xFF) > (0xFF - *b)) ? 1 : 0);
+	} else {
+		set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F)) ? 1 : 0);
+		set_flag(C_FLAG, ((*a & 0xFF) < *b) ? 1 : 0);
+	}	
+	
 	*regs.HL = *a + *b;
 	
 	set_flag(Z_FLAG, 0);
 	set_flag(N_FLAG, 0);
-	// Not sure if this is right
-	set_flag(H_FLAG, ((*a & 0x0F) > (0x0F - (*b & 0x0F))) ? 1 : 0);
-	set_flag(C_FLAG, ((*a & 0xFF) > (0xFF - *b)) ? 1 : 0);
 }
 
 void op_halt(void *_a, void *_b) {
@@ -250,8 +258,13 @@ void op_addsp(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
 	int8_t *b = (int8_t*)_b;
 
-	set_flag(H_FLAG, ((*a & 0x0F) > (0x0F - (*b & 0x0F))) ? 1 : 0);
-	set_flag(C_FLAG, ((*a & 0xFF) > (0xFF - *b)) ? 1 : 0);
+	if (*b >= 0) {
+		set_flag(H_FLAG, ((*a & 0x0F) > (0x0F - (*b & 0x0F))) ? 1 : 0);
+		set_flag(C_FLAG, ((*a & 0xFF) > (0xFF - *b)) ? 1 : 0);
+	} else {
+		set_flag(H_FLAG, ((*a & 0x0F) < (*b & 0x0F)) ? 1 : 0);
+		set_flag(C_FLAG, ((*a & 0xFF) < *b) ? 1 : 0);
+	}
 	
 	*a += *b;
 
@@ -438,11 +451,15 @@ void op_rra(void *_a, void *_b) {
 // !! According to documentation, interrupts are enabled / disabled
 // after the instruction next to di/ei is executed.
 void op_di(void *_a, void *_b) {
-	regs.ime_flag = 0;
+	int_count = 2;
+	int_opt = INT_DISABLE;
+	//regs.ime_flag = 0;
 }
 
 void op_ei(void *_a, void *_b) {
-	regs.ime_flag = 1;
+	int_count = 2;
+	int_opt = INT_ENABLE;
+	//regs.ime_flag = 1;
 }
 
 void op_push(void *_a, void *_b) {
@@ -450,16 +467,16 @@ void op_push(void *_a, void *_b) {
 	*regs.SP -= 2;
 	//mem_write_16(*regs.SP, *a);
 	// which one is the good one???
-	mem_write_8(*regs.SP+1, (uint8_t)(*a & 0x00FF));
-	mem_write_8(*regs.SP, (uint8_t)((*a & 0xFF00) >> 8));
+	mem_write_8(*regs.SP, (uint8_t)(*a & 0x00FF));
+	mem_write_8(*regs.SP+1, (uint8_t)((*a & 0xFF00) >> 8));
 }
 
 void op_pop(void *_a, void *_b) {
 	uint16_t *a = (uint16_t*)_a;
 	//*a = mem_read_16(*regs.SP);
 	// which one is the good one???
-	*a = ((uint16_t)mem_read_8(*regs.SP) << 8) +
-		(uint16_t)mem_read_8(*regs.SP+1);
+	*a = ((uint16_t)mem_read_8(*regs.SP+1) << 8) +
+		(uint16_t)mem_read_8(*regs.SP);
 	if (a == regs.AF) {
 		*regs.F &= 0xF0;
 	}
@@ -550,6 +567,7 @@ void op_ret(void *_a, void *_b) {
 
 void op_reti(void *_a, void *_b) {
         op_pop(&regs.PC, NULL);
+	// Delay the enable for one step???
 	op_ei(NULL, NULL);
 }
 
@@ -576,10 +594,8 @@ void op_cpl(void *_a, void *_b) {
 void op_daa(void *_a, void *_b) {
 	uint8_t *a = (uint8_t*)_a;
 
-	/*
+	
 	uint16_t a_cpy = *a;
-	//uint8_t up = (*a & 0xF0) >> 4;
-	//uint8_t lo = *a & 0x0F;
 
 	if (get_flag(N_FLAG)) {
 		if (get_flag(H_FLAG)) {
@@ -597,29 +613,15 @@ void op_daa(void *_a, void *_b) {
 		}
 	}
 
-	set_flag(C_FLAG, (a_cpy & 0x100) == 0x100);
+	if ((a_cpy & 0x100) == 0x100) {
+		set_flag(C_FLAG, 1);
+	}
+
 	set_flag(H_FLAG, 0);
 
 	*a = a_cpy;
 	
 	set_flag_Z(a);	
-	*/
-	
-        uint8_t corr = 0;
-
-	corr |= get_flag(H_FLAG) || ((*a & 0x0F) > 0x09) ? 0x06 : 0x00;
-	corr |= get_flag(C_FLAG) || *a > 0x99 ? 0x60 : 0x00;
-	
-	if (get_flag(N_FLAG)) {
-		*a -= corr;
-	} else {
-		*a += corr;
-	}
-
-	set_flag(C_FLAG, (corr << 2 & 0x100) ? 1 : 0);
-        set_flag_Z(a);
-	set_flag(H_FLAG, 0);
-	
 }
 
 void op_stop(void *_a, void *_b) {
@@ -1312,6 +1314,9 @@ void cpu_init() {
 	regs.PC = 0;
 	*regs.F = 0x00;
 	regs.ime_flag = 1;
+
+	ext_cycles = 0;
+	int_count = 0;
 }
 
 uint8_t disas_op(uint16_t off) {
@@ -1381,24 +1386,28 @@ int handle_interrupts() {
 		op_push(&regs.PC, NULL);
 		regs.PC = ADDR_INT_VBlank;
 		mem_bit_unset(IO_IFLAGS, MASK_IO_INT_VBlank);
+		regs.ime_flag = 0;
 	} else if (ienable & iflags & MASK_IO_INT_LCDSTAT_Int) {
 		op_push(&regs.PC, NULL);
 		regs.PC = ADDR_INT_LCDSTAT_Int;
 		mem_bit_unset(IO_IFLAGS, MASK_IO_INT_LCDSTAT_Int);
+		regs.ime_flag = 0;
 	} else if (ienable & iflags & MASK_IO_INT_Timer_Overflow) {
 		op_push(&regs.PC, NULL);
 		regs.PC = ADDR_INT_Timer_Overflow;
 		mem_bit_unset(IO_IFLAGS, MASK_IO_INT_Timer_Overflow);
+		regs.ime_flag = 0;
 	} else if (ienable & iflags & MASK_IO_INT_End_Serial_IO_Transfer) {
 		op_push(&regs.PC, NULL);
 		regs.PC = ADDR_INT_End_Serial_IO_Transfer;
 		mem_bit_unset(IO_IFLAGS, MASK_IO_INT_End_Serial_IO_Transfer);
+		regs.ime_flag = 0;
 	} else if (ienable & iflags & MASK_IO_INT_High_to_Low_P10_P13) {
 		op_push(&regs.PC, NULL);
 		regs.PC = ADDR_INT_High_to_Low_P10_P13;
 		mem_bit_unset(IO_IFLAGS, MASK_IO_INT_High_to_Low_P10_P13);
-	}
-	op_di(NULL, NULL);
+		regs.ime_flag = 0;
+	}	
 	return 20;
 }
 
@@ -1408,6 +1417,21 @@ int cpu_step() {
 	//uint8_t d8, a8, r8;
 	//uint16_t d16, a16;
 
+
+	if (int_count > 0) {
+		int_count--;
+		if (int_count == 0) {
+			switch(int_opt) {
+			case INT_ENABLE:
+				regs.ime_flag = 1;
+				break;
+			case INT_DISABLE:
+				regs.ime_flag = 0;
+				break;
+			}
+		}
+	}
+	
 	op = mem_read_8(regs.PC);
 	
 	exec_op(op);

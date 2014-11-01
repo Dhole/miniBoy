@@ -1,5 +1,8 @@
 #define CPU_FREQ 4194304
 
+#define INT_ENABLE  1
+#define INT_DISABLE 0
+
 typedef struct {
 	uint16_t PC, SP_val;
 	uint16_t *SP;

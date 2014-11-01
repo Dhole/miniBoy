@@ -133,6 +133,8 @@ int parse_com(char *buf, command_t *com, int arg_len) {
 
 int run_com(command_t *com) {
 	char *name = com->name;
+
+	// TODO: Make this nicer: in a loop?
 	
 	if (strncmp(name, "help", ARG_LEN) == 0 || name[0] == 'h') {
 		com_help();
@@ -160,7 +162,7 @@ int run_com(command_t *com) {
 		//printf("memory!\n");
 		mem_dump_io_regs();
 	} else if (strncmp(name, "quit", ARG_LEN) == 0 || name[0] == 'q') {
-		return -1;
+		exit(0);
 	} else {
 		printf("E) Unrecognized command: %s\n", name);
 	}
@@ -197,7 +199,7 @@ int debug_run(int *debug_flag, int *debug_pause) {
 			break;
 		} else {
 			/*
-			if (mem_read_8(regs->PC) == 0x07) {
+			if (mem_read_8(regs->PC) == 0xFB) {
 				state = DBG_IDLE;
 				break;
 			}
