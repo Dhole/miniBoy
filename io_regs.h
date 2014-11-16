@@ -104,3 +104,11 @@
 
 #define MASK_IO_SIOCONT_Start_Flag 0x01 << 7
 #define MASK_IO_SIOCONT_IO_Select  0x01 << 0
+
+#define MASK_IO_TIMCONT_Start  0x01 << 2
+#define MASK_IO_TIMCONT_clock (0x01 << 1) + (0x01 << 0)
+
+#define OPT_Timer_clock_4096   0
+#define OPT_Timer_clock_262144 1
+#define OPT_Timer_clock_65536  2
+#define OPT_Timer_clock_16384  3

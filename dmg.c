@@ -4,6 +4,7 @@
 #include "lr35902.h"
 #include "memory.h"
 #include "screen.h"
+#include "timer.h"
 #include "io_regs.h"
 #include "debugger.h"
 
@@ -156,6 +157,8 @@ void dmg_run(uint32_t delta, int *debug_flag, int *debug_pause) {
 			
 		// If LCD on...!!!
 		screen_emulate(cycles);
+
+		timer_emulate(cycles);
 			
 		clk += cycles;
 	}

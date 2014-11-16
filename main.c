@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
 	uint32_t delta;
 
 	pause_emu = 0;
-	scale = 1;
+	scale = 2;
 	
 	while ((opt = getopt(argc, argv, "vdb:")) != -1) {
 		switch (opt) {
@@ -122,7 +122,7 @@ int main(int argc, char** argv) {
 	
 	dmg_init();
 	
-	sdl_init();
+	sdl_init(scale);
 
 	time = 0;
 	frame = 1;

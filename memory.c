@@ -111,7 +111,8 @@ void mem_write_8(uint16_t addr, uint8_t v) {
 	if ((addr == IO_SIOCONT) && (v & MASK_IO_SIOCONT_Start_Flag)) {
 		// Set bit for transfer complete
 		mm[addr] = v;
-		printf("%c", mem_read_8(IO_SIODATA));
+		//printf("%c", mem_read_8(IO_SIODATA));
+		fprintf(stderr, "%c", mem_read_8(IO_SIODATA));
 		//printf("\n");
 		//assert(1 == 2);
 		mem_bit_unset(IO_SIOCONT, MASK_IO_SIOCONT_Start_Flag);

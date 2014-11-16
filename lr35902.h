@@ -14,11 +14,12 @@ typedef struct {
 } regs_t;
 
 typedef enum {
-	MEM_R_8,
-	MEM_R_16,
-	MEM_W_8,
-	MEM_W_16,
-	MEM_RW_16,
+	MEM_R_8a,
+	MEM_R_16a,
+	MEM_W_8a,
+	MEM_W_16a,
+	MEM_W_16a_16d,
+	MEM_RW_16a,
 	NONE,
 } opt_t;
 

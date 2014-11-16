@@ -6,7 +6,7 @@
 #define WIDTH 160
 #define HEIGHT 144
 
-static uint8_t scale = 1;
+static uint8_t scale;
 static uint32_t palette[NCOLORS + 1];
 static SDL_Window *window = NULL;
 static SDL_Surface *screen = NULL;
@@ -23,7 +23,7 @@ void sdl_setup_palette() {
 	palette[0] = SDL_MapRGB(screen->format, 0xFF, 0xFF, 0xFF);
 }
 
-int sdl_init() {
+int sdl_init(uint8_t s) {
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
 	rmask = 0xff000000;
 	gmask = 0x00ff0000;
@@ -35,6 +35,7 @@ int sdl_init() {
 	bmask = 0x00ff0000;
 	amask = 0xff000000;
 #endif
+	scale = s;
 //Initialize all SDL subsystems
 	if (SDL_Init(SDL_INIT_EVERYTHING) == -1) {
 		printf("%s\n", SDL_GetError());

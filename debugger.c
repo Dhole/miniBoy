@@ -29,6 +29,17 @@ static dbg_state_t state;
 static int rem_steps;
 static command_t com;
 
+typedef struct {
+	uint16_t addr;
+	unsigned int depth;
+	unsigned int rep;
+} trace_t;
+
+const unsigned int max_trace = 0x1000;
+static trace_t call_trace[max_trace];
+static unsigned int call_trace_len;
+static unsigned int call_trace_depth;
+
 void com_help() {
 	printf("\n    -= miniBoy debugger commands: =-\n\n"
 	       "help\n"
@@ -88,12 +99,41 @@ void com_step(int a) {
 	state = DBG_STEP;
 }
 
+void com_dump() {
+	FILE *fp;
+
+	fp = fopen("dump.bin", "wb");
+	fwrite(mem_get_mem(), MEM_SIZE, 1, fp);
+	fclose(fp);
+}
+
+void com_trace() {
+        int i, j;
+	for (i = 0; i < call_trace_len; i++) {
+		if (call_trace[i].depth > 10) {
+			printf("~~~~");
+		} else {
+			for (j = 0; j < call_trace[i].depth; j++) {
+				printf(" ");
+			}
+		}
+		printf("%04X", call_trace[i].addr);
+		if (call_trace[i].rep > 1) {
+			printf(" x %d\n", call_trace[i].rep);
+		} else {
+			printf("\n");
+		}
+	}
+}
+
 void debug_init() {
 	int i;
 	for (i = 0; i < MEM_SIZE; i++) {
 		break_points[i] = 0;
 	}
 	state = DBG_IDLE;
+	call_trace_len = 0;
+	call_trace_depth = 0;
 }
 
 int parse_com(char *buf, command_t *com, int arg_len) {
@@ -155,6 +195,10 @@ int run_com(command_t *com) {
 	} else if (strncmp(name, "memory", ARG_LEN) == 0 || name[0] == 'm') {
 		//printf("memory!\n");
 		mem_dump(com->arg_a, com->arg_b);
+	} else if (strncmp(name, "dump", ARG_LEN) == 0) {
+		com_dump();
+	} else if (strncmp(name, "trace", ARG_LEN) == 0) {
+		com_trace();
 	} else if (strncmp(name, "disas", ARG_LEN) == 0 || name[0] == 'd') {
 		//printf("memory!\n");
 		com_disas(com->arg_a, com->arg_b);
@@ -167,6 +211,45 @@ int run_com(command_t *com) {
 		printf("E) Unrecognized command: %s\n", name);
 	}
         return 0;
+}
+
+int debug_cpu_step() {
+	int cycles;
+	int op;
+	int sp, pc;
+
+	sp = *(regs->SP);
+	pc = regs->PC;
+	op = mem_read_8(regs->PC);
+	
+	cycles = cpu_step();
+	
+	if (op == 0xC4 || op == 0xD4 || op == 0xCC || op == 0xDC ||
+	    op == 0xCD) {
+		// CALL op
+		if (sp == *(regs->SP) + 2) {
+			if (call_trace_len > 0 &&
+			    call_trace[call_trace_len - 1].addr == pc) {
+				call_trace[call_trace_len - 1].rep += 1;
+				call_trace_depth += 1;
+			} else {
+				call_trace[call_trace_len].addr = pc;
+				call_trace[call_trace_len].depth = call_trace_depth;
+				call_trace[call_trace_len].rep = 1;
+				call_trace_len = (call_trace_len + 1) % max_trace;
+				call_trace_depth += 1;
+			}
+		}
+		
+	} else if (op == 0xC0 || op == 0xD0 || op == 0xC8 || op == 0xD8 ||
+		   op == 0xC9 || op == 0xD9) {
+		// RET op
+		if (sp == *(regs->SP) - 2) {
+			call_trace_depth -= 1;
+		}
+	}
+	
+	return cycles;
 }
 
 int debug_run(int *debug_flag, int *debug_pause) {
@@ -187,7 +270,7 @@ int debug_run(int *debug_flag, int *debug_pause) {
 		if (rem_steps > 0) {
 			disas_op(regs->PC);
 			rem_steps--;
-			return cpu_step();
+			return debug_cpu_step();
 		} else {
 			state = DBG_IDLE;
 		}
@@ -199,12 +282,12 @@ int debug_run(int *debug_flag, int *debug_pause) {
 			break;
 		} else {
 			/*
-			if (mem_read_8(regs->PC) == 0xFB) {
+			if (mem_read_8(regs->PC) == 0x30) {
 				state = DBG_IDLE;
 				break;
 			}
 			*/
-			return cpu_step();
+			return debug_cpu_step();
 		}
 		break;
 	}
@@ -227,7 +310,7 @@ int debug_run(int *debug_flag, int *debug_pause) {
 			continue;
 		} else {
 			if (state == DBG_CONT) {
-				return cpu_step();
+				return debug_cpu_step();
 			}
 			return 0;
 		}
