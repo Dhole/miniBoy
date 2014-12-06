@@ -117,10 +117,10 @@ int main(int argc, char** argv) {
 	}
 	rom_path = argv[optind];
 
+	dmg_init();
+
 	dmg_load_bios(bios_path);
 	dmg_load_rom(rom_path);
-	
-	dmg_init();
 	
 	sdl_init(scale);
 

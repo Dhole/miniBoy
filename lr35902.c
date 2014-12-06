@@ -626,6 +626,7 @@ void op_daa(void *_a, void *_b) {
 
 void op_stop(void *_a, void *_b) {
         // TODO
+	// printf("Stopped: [%04X] %04X\n", regs.PC - 2, mem_read_16(regs.PC - 2));
 }
 
 void op_nop(void *_a, void *_b) {

@@ -7,9 +7,9 @@
 #include "timer.h"
 #include "io_regs.h"
 #include "debugger.h"
+#include "rom.h"
 
 #define MAX_BIOS_SIZE 0x100
-#define MAX_ROM_SIZE 0x400000
 
 //static uint8_t bios[256];
 //static uint8_t *rom;
@@ -46,33 +46,11 @@ void dmg_load_bios(char *bios_path) {
 }
 
 void dmg_load_rom(char *rom_path) {
-	int size;
-	FILE *fr;
-	uint8_t *rom;
-	
-	fr = fopen(rom_path, "rb");
-	if (fr == NULL) {
-		printf("Can't open rom file %s", rom_path);
-		exit(1);
-	}
-	fseek(fr, 0, SEEK_END);
-	size = ftell(fr);
-	if (size > MAX_ROM_SIZE) {
-		printf("Rom file %s too big", rom_path);
-		exit(1);
-	}
-	fseek(fr, 0, SEEK_SET);
-	rom = malloc(size);
-	fread(rom, 1, size, fr);
-	//mem_load(0x100, &rom[0x100], 0x4000 - 0x100);
-	//printf("READ ROM: %02x %02x %02x %02x\n", rom[0], rom[1], rom[2], rom[3]);
-	mem_set_rom(rom, size);
-	mem_load_rom();
-	fclose(fr);
+	rom_load(rom_path);
 }
 
 void dmg_unload_rom() {
-	mem_unset_rom();
+	rom_unload();
 }
 
 void set_boot_state() {
@@ -123,7 +101,14 @@ void set_boot_state() {
 
 void dmg_init() {       	
 	debug_init();
+	rom_init();
+	mem_init();
 	cpu_init();
+
+	//uint16_t a;
+	//for (a = 0xFEA0; a < 0xFFF0; a++) {
+	//	mem_write_8(a, 0xFF);
+	//}
 
 	if (skip_bios) {
 		set_boot_state();

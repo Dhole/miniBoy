@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include "memory.h"
 #include "io_regs.h"
+#include "rom.h"
 
 // temporary
 #include <assert.h>
@@ -14,15 +15,21 @@
 static uint8_t mm[MEM_SIZE];
 
 static uint8_t *bios;
-static uint8_t *rom;
-static unsigned int bios_size = 0;
-static unsigned int rom_size = 0;
+static uint8_t bios_enabled;
+static unsigned int bios_size;
 // Maybe add mem_init to set the pointers to NULL???
+
+void mem_init() {
+       bios = NULL;
+       bios_enabled = 0;
+       bios_size = 0;
+}
 
 void mem_load(uint16_t addr, uint8_t *buf, unsigned int size) {
 	memcpy(&mm[addr], buf, size);
 }
 
+/*
 void mem_set_rom(uint8_t *r, unsigned int size) {
 	rom = r;
 	rom_size = size;
@@ -38,24 +45,27 @@ void mem_unset_rom() {
 	}
 }
 
+
 void mem_load_rom() {
 	//mem_load(0, rom, rom_size);
 	mem_load(0, rom, 0x8000);
 }
-
+*/
 void mem_set_bios(uint8_t *b,  unsigned int size) {
 	bios = b;
 	bios_size = size;
 }
 
 void mem_enable_bios() {
-	mem_load(0, bios, bios_size);
+	//mem_load(0, bios, bios_size);
 	//printf("BIOS JUST ENABLED size: %d\n", bios_size);
 	//mem_dump(0x0, 0x200);
+	bios_enabled = 1;
 }
 
 void mem_disable_bios() {
-	mem_load(0, rom, bios_size);
+	//mem_load(0, rom, bios_size);
+	bios_enabled = 0;
 }
 
 uint8_t *mem_get_mem() {
@@ -74,10 +84,64 @@ uint8_t mem_bit_test(uint16_t addr, uint8_t bit) {
 	return ((mm[addr] & bit) > 0);
 }
 
+//typedef uint8_t (*fptr_mem_read_8)(uint16_t addr);
+//typedef void (*fptr_mem_write_8)(uint16_t addr, uint8_t v);
+
+mem_map_t mem_map(uint16_t addr) {
+       if (addr < 0x100 && bios_enabled) {
+	      return MEM_MAP_BIOS;
+       }
+       if (addr < 0x8000) {
+	      return MEM_MAP_ROM;
+       }
+       if (addr < 0xA000) {
+	      return MEM_MAP_VRAM;
+       }
+       if (addr < 0xC000) {
+	      return MEM_MAP_ROM_RAM;
+       }
+       if (addr < 0xE000) {
+	      return MEM_MAP_WRAM;
+       }
+       if (addr < 0xFE00) {
+	      return MEM_MAP_RAM_ECHO;
+       }
+       if (addr < 0xFEA0) {
+	      return MEM_MAP_OAM;
+       }
+       if (addr < 0xFF00) {
+	      return MEM_MAP_NOT_USABLE;	      
+       }
+       if (addr < 0xFF80) {
+	      return MEM_MAP_IO;
+       }
+       if (addr < 0xFFFF) {
+	      return MEM_MAP_HRAM;
+       }       
+       return MEM_MAP_IE_REG;
+}
+
 uint8_t mem_read_8(uint16_t addr) {
-	// Internal RAM echo
-	if (addr >= 0xE000 && addr < 0xFE00) {
-		return mm[addr - 2000];
+	switch(mem_map(addr)) {
+	case MEM_MAP_BIOS:
+	       return bios[addr];
+	       break;
+	case MEM_MAP_ROM:
+	case MEM_MAP_ROM_RAM:
+	       return rom_read_8(addr);
+	       break;
+	case MEM_MAP_RAM_ECHO:
+	       return mm[addr - 2000];
+	       break;
+	case MEM_MAP_NOT_USABLE:
+	       break;
+	case MEM_MAP_WRAM:
+	case MEM_MAP_VRAM:
+	case MEM_MAP_OAM:
+	case MEM_MAP_IO:
+	case MEM_MAP_HRAM:
+	case MEM_MAP_IE_REG:
+	       break;
 	}
 	return mm[addr];
 	// Handle IO mappings???
@@ -90,11 +154,6 @@ uint16_t mem_read_16(uint16_t addr) {
 }
 
 void mem_write_8(uint16_t addr, uint8_t v) {
-	// Internal RAM echo
-	if (addr >= 0xE000 && addr < 0xFE00) {
-		mm[addr - 2000] = v;
-		return;
-	}
 	// Handle IO mappings
 	if (addr == 0xFF50) {
 		//printf("SOMETHING HERE!!!\n");
@@ -104,10 +163,6 @@ void mem_write_8(uint16_t addr, uint8_t v) {
 		}
 		
 	}
-	// print debug serial transfer
-	//if (addr == IO_SIODATA) {
-		//printf("%c", v);
-	//}
 	if ((addr == IO_SIOCONT) && (v & MASK_IO_SIOCONT_Start_Flag)) {
 		// Set bit for transfer complete
 		mm[addr] = v;
@@ -118,9 +173,28 @@ void mem_write_8(uint16_t addr, uint8_t v) {
 		mem_bit_unset(IO_SIOCONT, MASK_IO_SIOCONT_Start_Flag);
 		return;
 	}
-	//printf("hey\n");
-
-	mm[addr] = v;
+	switch(mem_map(addr)) {
+	case MEM_MAP_BIOS:
+	       break;
+	case MEM_MAP_ROM:
+	case MEM_MAP_ROM_RAM:
+	       rom_write_8(addr, v);
+	       break;
+	case MEM_MAP_RAM_ECHO:
+	       mm[addr - 2000] = v;
+	       break;
+	case MEM_MAP_NOT_USABLE:
+	       break;
+	case MEM_MAP_WRAM:
+	case MEM_MAP_VRAM:
+	case MEM_MAP_OAM:
+	case MEM_MAP_IO:
+	case MEM_MAP_HRAM:
+	case MEM_MAP_IE_REG:
+	       mm[addr] = v;
+	       break;
+	}
+	return;
 }
 
 void mem_write_16(uint16_t addr, uint16_t v) {
