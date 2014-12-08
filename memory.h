@@ -1,5 +1,7 @@
 #define MEM_SIZE 0x10000
 
+#define MEM_OAM 0xFE00
+
 typedef enum {
 	MEM_MAP_BIOS,
 	MEM_MAP_ROM,

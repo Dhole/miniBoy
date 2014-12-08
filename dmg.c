@@ -13,45 +13,7 @@
 
 //static uint8_t bios[256];
 //static uint8_t *rom;
-static uint8_t skip_bios = 0;
-
-void dmg_load_bios(char *bios_path) {
-	int size;
-	FILE *fb;
-	uint8_t *bios;
-
-	if (bios_path == NULL) {
-		printf("Booting without BIOS ROM\n");
-		skip_bios = 1;
-		return;
-	}
-	
-	fb = fopen(bios_path, "rb");
-	if (fb == NULL) {
-		printf("Can't open bios file %s", bios_path);
-		exit(1);
-	}
-	fseek(fb, 0, SEEK_END);
-	size = ftell(fb);
-	if (size > MAX_BIOS_SIZE) {
-		printf("Bios file %s too big", bios_path);
-		exit(1);
-	}
-	fseek(fb, 0, SEEK_SET);
-	bios = malloc(size);
-	fread(bios, 1, size, fb);
-	//mem_load(0, bios, size);
-	mem_set_bios(bios, size);
-	fclose(fb);
-}
-
-void dmg_load_rom(char *rom_path) {
-	rom_load(rom_path);
-}
-
-void dmg_unload_rom() {
-	rom_unload();
-}
+//static uint8_t skip_bios = 0;
 
 void set_boot_state() {
 	regs_t *regs;
@@ -99,6 +61,47 @@ void set_boot_state() {
 		    
 }
 
+void dmg_load_bios(char *bios_path) {
+	int size;
+	FILE *fb;
+	uint8_t *bios;
+
+	if (bios_path == NULL) {
+		printf("Booting without BIOS ROM\n");
+		//skip_bios = 1;
+		set_boot_state();
+		return;
+	}
+	
+	fb = fopen(bios_path, "rb");
+	if (fb == NULL) {
+		printf("Can't open bios file %s", bios_path);
+		exit(1);
+	}
+	fseek(fb, 0, SEEK_END);
+	size = ftell(fb);
+	if (size > MAX_BIOS_SIZE) {
+		printf("Bios file %s too big", bios_path);
+		exit(1);
+	}
+	fseek(fb, 0, SEEK_SET);
+	bios = malloc(size);
+	fread(bios, 1, size, fb);
+	//mem_load(0, bios, size);
+	mem_set_bios(bios, size);
+	fclose(fb);
+
+	mem_enable_bios();
+}
+
+void dmg_load_rom(char *rom_path) {
+	rom_load(rom_path);
+}
+
+void dmg_unload_rom() {
+	rom_unload();
+}
+
 void dmg_init() {       	
 	debug_init();
 	rom_init();
@@ -109,12 +112,13 @@ void dmg_init() {
 	//for (a = 0xFEA0; a < 0xFFF0; a++) {
 	//	mem_write_8(a, 0xFF);
 	//}
-
+	/*
 	if (skip_bios) {
 		set_boot_state();
 	} else {
 		mem_enable_bios();
 	}
+	*/
 	//cpu_test();
 	//debug_run();
 }

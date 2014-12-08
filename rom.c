@@ -207,6 +207,8 @@ int rom_read_info() {
 		printf("Cartridge type not recocniged\n");
 		return 1;
 	}
+
+
 	return 0;
 }
 
@@ -214,7 +216,18 @@ void rom_print_info() {
 
 }
 
-uint8_t rom_read_8(uint16_t addr) {
+uint8_t mbc_none_read_8(uint16_t addr) {
+	if (addr < 0x8000) {
+		return rom[addr];
+	}
+	return 0;	
+}
+
+void mbc_none_write_8(uint16_t addr, uint8_t v) {
+	return;
+}
+
+uint8_t mbc1_read_8(uint16_t addr) {
 	if (addr < 0x4000) {
 		return rom[addr];
 	}
@@ -225,10 +238,9 @@ uint8_t rom_read_8(uint16_t addr) {
 		return ram[addr - 0xA000 + 0x2000 * ram_bank];
 	}
 	return 0;
-
 }
 
-void rom_write_8(uint16_t addr, uint8_t v) {
+void mbc1_write_8(uint16_t addr, uint8_t v) {
 	if (addr < 0x2000) {
 		ram_enable = 1;
 		return;
@@ -251,3 +263,38 @@ void rom_write_8(uint16_t addr, uint8_t v) {
 		return;
 	}
 }
+
+uint8_t rom_read_8(uint16_t addr) {
+	switch (rom_info.mbc) {
+	case MBC_NONE:
+		return mbc_none_read_8(addr);
+		break;
+	case MBC_1:
+		return mbc1_read_8(addr);
+		break;
+	case MBC_2:
+		break;
+	case MBC_3:
+		break;
+	case MBC_5:
+		break;
+	}
+	return 0;
+}
+void rom_write_8(uint16_t addr, uint8_t v){
+	switch (rom_info.mbc) {
+	case MBC_NONE:
+		mbc_none_write_8(addr, v);
+		break;
+	case MBC_1:
+		mbc1_write_8(addr, v);
+		break;
+	case MBC_2:
+		break;
+	case MBC_3:
+		break;
+	case MBC_5:
+		break;
+	}
+}
+
