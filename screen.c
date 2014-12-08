@@ -93,6 +93,7 @@ void screen_draw_line_fb(uint8_t line) {
 				obj_disp[(line + SCREEN_SPRITE_INI_Y) * 256 +
 				i + SCREEN_SPRITE_INI_X];
 		}
+		
 	}
 	// Apply palette at end of each draw_line_{bg, win, obj} !!!
 }
@@ -253,7 +254,8 @@ void screen_draw_line_obj(uint8_t line) {
 	// Y = 0 or Y => 144+16, discard sprite
 
 	int i, j, first;
-	uint8_t addr, obj_height, objs_line_len, obj_line;
+	uint16_t addr;
+	uint8_t obj_height, objs_line_len, obj_line;
 	uint8_t obj_line_a, obj_line_b;
 	obj_t objs[40];
 	obj_t *objs_line[40];
@@ -270,21 +272,27 @@ void screen_draw_line_obj(uint8_t line) {
 	}
 	// Read all the obj attributes
 	for (i = 0; i < 40; i++) {
-		addr = 0xFE00 + i * 4;
+		addr = MEM_OAM + i * 4;
 
 		objs[i].id = i;
 		objs[i].y = mem_read_8(addr++);
 		objs[i].x = mem_read_8(addr++);
 		objs[i].pat = mem_read_8(addr++);
 		objs[i].flags = mem_read_8(addr);
+		//printf("x: %02X, y: %02X - ", objs[i].x, objs[i].y);
 	}
+	//printf("\n");
 
 	// Take the candidate objects to be drawn in the line
 	objs_line_len = 0;
 	for (i = 0; i < 40; i++) {
-		if(objs[i].y != 0 && objs[i].y < SCREEN_SPRITE_END_Y &&
-		   objs[i].y <= line && (objs[i].y + obj_height) > line) {
+		if((objs[i].y != 0) && (objs[i].y < SCREEN_SPRITE_END_Y) &&
+		   (objs[i].y <= line) && ((objs[i].y + obj_height) > line)) {
 			objs_line[objs_line_len++] = &objs[i];
+			//printf("Object %d:\n", objs[i].id);
+			//printf("x: %02X, y: %02X, pat: %02X\n",
+			//       objs[i].x, objs[i].y, objs[i].pat);
+			//return;
 		}
 	}
 

@@ -123,22 +123,30 @@ void dma(uint16_t a) {
 	int i;
 	uint8_t tmp;
 	for (i = 0; i < 20; i++) {
-		mm[MEM_OAM + i * 64] = mm[a + i * 56];
-		mm[MEM_OAM + i * 64 + 1] = mm[a + i * 56 + 1];
-		mm[MEM_OAM + i * 64 + 2] = mm[a + i * 56 + 2];
-		tmp = mm[a + i * 56 + 3];
-		mm[MEM_OAM + i * 64 + 3] = tmp & 0xF0;
-		mm[MEM_OAM + i * 64 + 4] = (tmp & 0x0F) << 4;
-		tmp = mm[a + i * 56 + 4];
-		mm[MEM_OAM + i * 64 + 4] |= (tmp & 0xF0) >> 4;
-		mm[MEM_OAM + i * 64 + 5] = (tmp & 0x0F) << 4;
-		tmp = mm[a + i * 56 + 5];
-		mm[MEM_OAM + i * 64 + 5] |= (tmp & 0xF0) >> 4;
-		mm[MEM_OAM + i * 64 + 6] = (tmp & 0x0F) << 4;
-		tmp = mm[a + i * 56 + 6];
-		mm[MEM_OAM + i * 64 + 6] |= (tmp & 0xF0) >> 4;
-		mm[MEM_OAM + i * 64 + 7] = (tmp & 0x0F) << 4;
+		mm[MEM_OAM + i * 8] = mm[a + i * 7];
+		mm[MEM_OAM + i * 8 + 1] = mm[a + i * 7 + 1];
+		mm[MEM_OAM + i * 8 + 2] = mm[a + i * 7 + 2];
+		tmp = mm[a + i * 7 + 3];
+		mm[MEM_OAM + i * 8 + 3] = tmp & 0xF0;
+		mm[MEM_OAM + i * 8 + 4] = (tmp & 0x0F) << 4;
+		tmp = mm[a + i * 7 + 4];
+		mm[MEM_OAM + i * 8 + 4] |= (tmp & 0xF0) >> 4;
+		mm[MEM_OAM + i * 8 + 5] = (tmp & 0x0F) << 4;
+		tmp = mm[a + i * 7 + 5];
+		mm[MEM_OAM + i * 8 + 5] |= (tmp & 0xF0) >> 4;
+		mm[MEM_OAM + i * 8 + 6] = (tmp & 0x0F) << 4;
+		tmp = mm[a + i * 7 + 6];
+		mm[MEM_OAM + i * 8 + 6] |= (tmp & 0xF0) >> 4;
+		mm[MEM_OAM + i * 8 + 7] = (tmp & 0x0F) << 4;
 	}
+	/*
+	printf("DMA at %02x\n", a);
+	printf("--- Origin ---\n");
+	mem_dump(a, a + 0x8C);
+	printf("--- OAM ---\n");
+	mem_dump(MEM_OAM, MEM_OAM + 0xA0);
+	*/
+	//exit(0);
 }
 
 uint8_t mem_read_io_8(uint16_t addr) {
