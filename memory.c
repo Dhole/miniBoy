@@ -120,33 +120,14 @@ mem_map_t mem_map(uint16_t addr) {
 }
 
 void dma(uint16_t a) {
-	int i;
-	uint8_t tmp;
-	for (i = 0; i < 20; i++) {
-		mm[MEM_OAM + i * 8] = mm[a + i * 7];
-		mm[MEM_OAM + i * 8 + 1] = mm[a + i * 7 + 1];
-		mm[MEM_OAM + i * 8 + 2] = mm[a + i * 7 + 2];
-		tmp = mm[a + i * 7 + 3];
-		mm[MEM_OAM + i * 8 + 3] = tmp & 0xF0;
-		mm[MEM_OAM + i * 8 + 4] = (tmp & 0x0F) << 4;
-		tmp = mm[a + i * 7 + 4];
-		mm[MEM_OAM + i * 8 + 4] |= (tmp & 0xF0) >> 4;
-		mm[MEM_OAM + i * 8 + 5] = (tmp & 0x0F) << 4;
-		tmp = mm[a + i * 7 + 5];
-		mm[MEM_OAM + i * 8 + 5] |= (tmp & 0xF0) >> 4;
-		mm[MEM_OAM + i * 8 + 6] = (tmp & 0x0F) << 4;
-		tmp = mm[a + i * 7 + 6];
-		mm[MEM_OAM + i * 8 + 6] |= (tmp & 0xF0) >> 4;
-		mm[MEM_OAM + i * 8 + 7] = (tmp & 0x0F) << 4;
+	int i, j;
+	//uint8_t tmp;
+	for (i = 0; i < 40; i++) {
+		for (j = 0; j < 4; j++) {
+			mm[MEM_OAM + i * 4 + j] = mm[a + i * 4 + j];
+		}
+		mm[MEM_OAM + i * 4 + 3] &= 0xF0;
 	}
-	/*
-	printf("DMA at %02x\n", a);
-	printf("--- Origin ---\n");
-	mem_dump(a, a + 0x8C);
-	printf("--- OAM ---\n");
-	mem_dump(MEM_OAM, MEM_OAM + 0xA0);
-	*/
-	//exit(0);
 }
 
 uint8_t mem_read_io_8(uint16_t addr) {
@@ -257,7 +238,7 @@ void mem_dump(uint16_t start, uint16_t end) {
 		printf("%04X  ", i);
 		for (j = 0; j < 16; j++) {
 			if (i + j <= end) {
-				printf("%02x ", mm[i + j]);
+				printf("%02x ", mem_read_8(i + j));
 			} else {
 				printf("   ");
 			}
@@ -269,7 +250,8 @@ void mem_dump(uint16_t start, uint16_t end) {
 		for (j = 0; j < 16; j++) {
 			if (i + j <= end) {
 				printf("%c",
-				       isprint(mm[i + j]) ? mm[i + j] : '.');
+				       isprint(mem_read_8(i + j)) ? 
+					       mem_read_8(i + j) : '.');
 			}
 		}
 		printf("|\n");
@@ -289,87 +271,129 @@ char *byte2bin_str(uint8_t b, char *s) {
 void mem_dump_io_regs() {
 	char s[16];
 	printf("%02X [JOYPAD]:    %02x (%s)\n",
-	       IO_JOYPAD, mm[IO_JOYPAD], byte2bin_str(mm[IO_JOYPAD], s));
+	       IO_JOYPAD, mem_read_8(IO_JOYPAD), 
+		byte2bin_str(mem_read_8(IO_JOYPAD), s));
 	printf("%02X [SIODATA]:   %02x (%s)\n",
-	       IO_SIODATA, mm[IO_SIODATA], byte2bin_str(mm[IO_SIODATA], s));
+	       IO_SIODATA, mem_read_8(IO_SIODATA), 
+		byte2bin_str(mem_read_8(IO_SIODATA), s));
 	printf("%02X [SIOCONT]:   %02x (%s)\n",
-	       IO_SIOCONT, mm[IO_SIOCONT], byte2bin_str(mm[IO_SIOCONT], s));
+	       IO_SIOCONT, mem_read_8(IO_SIOCONT), 
+		byte2bin_str(mem_read_8(IO_SIOCONT), s));
 	printf("%02X [DIVIDER]:   %02x (%s)\n",
-	       IO_DIVIDER, mm[IO_DIVIDER], byte2bin_str(mm[IO_DIVIDER], s));
+	       IO_DIVIDER, mem_read_8(IO_DIVIDER), 
+		byte2bin_str(mem_read_8(IO_DIVIDER), s));
 	printf("%02X [TIMECNT]:   %02x (%s)\n",
-	       IO_TIMECNT, mm[IO_TIMECNT], byte2bin_str(mm[IO_TIMECNT], s));
+	       IO_TIMECNT, mem_read_8(IO_TIMECNT), 
+		byte2bin_str(mem_read_8(IO_TIMECNT), s));
 	printf("%02X [TIMEMOD]:   %02x (%s)\n",
-	       IO_TIMEMOD, mm[IO_TIMEMOD], byte2bin_str(mm[IO_TIMEMOD], s));
+	       IO_TIMEMOD, mem_read_8(IO_TIMEMOD), 
+		byte2bin_str(mem_read_8(IO_TIMEMOD), s));
 	printf("%02X [TIMCONT]:   %02x (%s)\n",
-	       IO_TIMCONT, mm[IO_TIMCONT], byte2bin_str(mm[IO_TIMCONT], s));
+	       IO_TIMCONT, mem_read_8(IO_TIMCONT), 
+		byte2bin_str(mem_read_8(IO_TIMCONT), s));
 	printf("%02X [IFLAGS]:    %02x (%s)\n",
-	       IO_IFLAGS, mm[IO_IFLAGS], byte2bin_str(mm[IO_IFLAGS], s));
+	       IO_IFLAGS, mem_read_8(IO_IFLAGS), 
+		byte2bin_str(mem_read_8(IO_IFLAGS), s));
 	printf("%02X [SNDREG10]:  %02x (%s)\n",
-	       IO_SNDREG10, mm[IO_SNDREG10], byte2bin_str(mm[IO_SNDREG10], s));
+	       IO_SNDREG10, mem_read_8(IO_SNDREG10), 
+		byte2bin_str(mem_read_8(IO_SNDREG10), s));
 	printf("%02X [SNDREG11]:  %02x (%s)\n",
-	       IO_SNDREG11, mm[IO_SNDREG11], byte2bin_str(mm[IO_SNDREG11], s));
+	       IO_SNDREG11, mem_read_8(IO_SNDREG11), 
+		byte2bin_str(mem_read_8(IO_SNDREG11), s));
 	printf("%02X [SNDREG12]:  %02x (%s)\n",
-	       IO_SNDREG12, mm[IO_SNDREG12], byte2bin_str(mm[IO_SNDREG12], s));
+	       IO_SNDREG12, mem_read_8(IO_SNDREG12), 
+		byte2bin_str(mem_read_8(IO_SNDREG12), s));
 	printf("%02X [SNDREG13]:  %02x (%s)\n",
-	       IO_SNDREG13, mm[IO_SNDREG13], byte2bin_str(mm[IO_SNDREG13], s));
+	       IO_SNDREG13, mem_read_8(IO_SNDREG13), 
+		byte2bin_str(mem_read_8(IO_SNDREG13), s));
 	printf("%02X [SNDREG14]:  %02x (%s)\n",
-	       IO_SNDREG14, mm[IO_SNDREG14], byte2bin_str(mm[IO_SNDREG14], s));
+	       IO_SNDREG14, mem_read_8(IO_SNDREG14), 
+		byte2bin_str(mem_read_8(IO_SNDREG14), s));
 	printf("%02X [SNDREG21]:  %02x (%s)\n",
-	       IO_SNDREG21, mm[IO_SNDREG21], byte2bin_str(mm[IO_SNDREG21], s));
+	       IO_SNDREG21, mem_read_8(IO_SNDREG21), 
+		byte2bin_str(mem_read_8(IO_SNDREG21), s));
 	printf("%02X [SNDREG22]:  %02x (%s)\n",
-	       IO_SNDREG22, mm[IO_SNDREG22], byte2bin_str(mm[IO_SNDREG22], s));
+	       IO_SNDREG22, mem_read_8(IO_SNDREG22), 
+		byte2bin_str(mem_read_8(IO_SNDREG22), s));
 	printf("%02X [SNDREG23]:  %02x (%s)\n",
-	       IO_SNDREG23, mm[IO_SNDREG23], byte2bin_str(mm[IO_SNDREG23], s));
+	       IO_SNDREG23, mem_read_8(IO_SNDREG23), 
+		byte2bin_str(mem_read_8(IO_SNDREG23), s));
 	printf("%02X [SNDREG24]:  %02x (%s)\n",
-	       IO_SNDREG24, mm[IO_SNDREG24], byte2bin_str(mm[IO_SNDREG24], s));
+	       IO_SNDREG24, mem_read_8(IO_SNDREG24), 
+		byte2bin_str(mem_read_8(IO_SNDREG24), s));
 	printf("%02X [SNDREG30]:  %02x (%s)\n",
-	       IO_SNDREG30, mm[IO_SNDREG30], byte2bin_str(mm[IO_SNDREG30], s));
+	       IO_SNDREG30, mem_read_8(IO_SNDREG30), 
+		byte2bin_str(mem_read_8(IO_SNDREG30), s));
 	printf("%02X [SNDREG31]:  %02x (%s)\n",
-	       IO_SNDREG31, mm[IO_SNDREG31], byte2bin_str(mm[IO_SNDREG31], s));
+	       IO_SNDREG31, mem_read_8(IO_SNDREG31), 
+		byte2bin_str(mem_read_8(IO_SNDREG31), s));
 	printf("%02X [SNDREG32]:  %02x (%s)\n",
-	       IO_SNDREG32, mm[IO_SNDREG32], byte2bin_str(mm[IO_SNDREG32], s));
+	       IO_SNDREG32, mem_read_8(IO_SNDREG32), 
+		byte2bin_str(mem_read_8(IO_SNDREG32), s));
 	printf("%02X [SNDREG33]:  %02x (%s)\n",
-	       IO_SNDREG33, mm[IO_SNDREG33], byte2bin_str(mm[IO_SNDREG33], s));
+	       IO_SNDREG33, mem_read_8(IO_SNDREG33), 
+		byte2bin_str(mem_read_8(IO_SNDREG33), s));
 	printf("%02X [SNDREG34]:  %02x (%s)\n",
-	       IO_SNDREG34, mm[IO_SNDREG34], byte2bin_str(mm[IO_SNDREG34], s));
+	       IO_SNDREG34, mem_read_8(IO_SNDREG34), 
+		byte2bin_str(mem_read_8(IO_SNDREG34), s));
 	printf("%02X [SNDREG41]:  %02x (%s)\n",
-	       IO_SNDREG41, mm[IO_SNDREG41], byte2bin_str(mm[IO_SNDREG41], s));
+	       IO_SNDREG41, mem_read_8(IO_SNDREG41), 
+		byte2bin_str(mem_read_8(IO_SNDREG41), s));
 	printf("%02X [SNDREG42]:  %02x (%s)\n",
-	       IO_SNDREG42, mm[IO_SNDREG42], byte2bin_str(mm[IO_SNDREG42], s));
+	       IO_SNDREG42, mem_read_8(IO_SNDREG42), 
+		byte2bin_str(mem_read_8(IO_SNDREG42), s));
 	printf("%02X [SNDREG43]:  %02x (%s)\n",
-	       IO_SNDREG43, mm[IO_SNDREG43], byte2bin_str(mm[IO_SNDREG43], s));
+	       IO_SNDREG43, mem_read_8(IO_SNDREG43), 
+		byte2bin_str(mem_read_8(IO_SNDREG43), s));
 	printf("%02X [SNDREG44]:  %02x (%s)\n",
-	       IO_SNDREG44, mm[IO_SNDREG44], byte2bin_str(mm[IO_SNDREG44], s));
+	       IO_SNDREG44, mem_read_8(IO_SNDREG44), 
+		byte2bin_str(mem_read_8(IO_SNDREG44), s));
 	printf("%02X [SNDREG50]:  %02x (%s)\n",
-	       IO_SNDREG50, mm[IO_SNDREG50], byte2bin_str(mm[IO_SNDREG50], s));
+	       IO_SNDREG50, mem_read_8(IO_SNDREG50), 
+		byte2bin_str(mem_read_8(IO_SNDREG50), s));
 	printf("%02X [SNDREG51]:  %02x (%s)\n",
-	       IO_SNDREG51, mm[IO_SNDREG51], byte2bin_str(mm[IO_SNDREG51], s));
+	       IO_SNDREG51, mem_read_8(IO_SNDREG51), 
+		byte2bin_str(mem_read_8(IO_SNDREG51), s));
 	printf("%02X [SNDREG52]:  %02x (%s)\n",
-	       IO_SNDREG52, mm[IO_SNDREG52], byte2bin_str(mm[IO_SNDREG52], s));
+	       IO_SNDREG52, mem_read_8(IO_SNDREG52), 
+		byte2bin_str(mem_read_8(IO_SNDREG52), s));
 	printf("%02X [LCDCONT]:   %02x (%s)\n",
-	       IO_LCDCONT, mm[IO_LCDCONT], byte2bin_str(mm[IO_LCDCONT], s));
+	       IO_LCDCONT, mem_read_8(IO_LCDCONT), 
+		byte2bin_str(mem_read_8(IO_LCDCONT), s));
 	printf("%02X [LCDSTAT]:   %02x (%s)\n",
-	       IO_LCDSTAT, mm[IO_LCDSTAT], byte2bin_str(mm[IO_LCDSTAT], s));
+	       IO_LCDSTAT, mem_read_8(IO_LCDSTAT), 
+		byte2bin_str(mem_read_8(IO_LCDSTAT), s));
 	printf("%02X [SCROLLY]:   %02x (%s)\n",
-	       IO_SCROLLY, mm[IO_SCROLLY], byte2bin_str(mm[IO_SCROLLY], s));
+	       IO_SCROLLY, mem_read_8(IO_SCROLLY), 
+		byte2bin_str(mem_read_8(IO_SCROLLY), s));
 	printf("%02X [SCROLLX]:   %02x (%s)\n",
-	       IO_SCROLLX, mm[IO_SCROLLX], byte2bin_str(mm[IO_SCROLLX], s));
+	       IO_SCROLLX, mem_read_8(IO_SCROLLX), 
+		byte2bin_str(mem_read_8(IO_SCROLLX), s));
 	printf("%02X [CURLINE]:   %02x (%s)\n",
-	       IO_CURLINE, mm[IO_CURLINE], byte2bin_str(mm[IO_CURLINE], s));
+	       IO_CURLINE, mem_read_8(IO_CURLINE), 
+		byte2bin_str(mem_read_8(IO_CURLINE), s));
 	printf("%02X [CMPLINE]:   %02x (%s)\n",
-	       IO_CMPLINE, mm[IO_CMPLINE], byte2bin_str(mm[IO_CMPLINE], s));
+	       IO_CMPLINE, mem_read_8(IO_CMPLINE), 
+		byte2bin_str(mem_read_8(IO_CMPLINE), s));
 	printf("%02X [BGRDPAL]:   %02x (%s)\n",
-	       IO_BGRDPAL, mm[IO_BGRDPAL], byte2bin_str(mm[IO_BGRDPAL], s));
+	       IO_BGRDPAL, mem_read_8(IO_BGRDPAL), 
+		byte2bin_str(mem_read_8(IO_BGRDPAL), s));
 	printf("%02X [OBJ0PAL]:   %02x (%s)\n",
-	       IO_OBJ0PAL, mm[IO_OBJ0PAL], byte2bin_str(mm[IO_OBJ0PAL], s));
+	       IO_OBJ0PAL, mem_read_8(IO_OBJ0PAL), 
+		byte2bin_str(mem_read_8(IO_OBJ0PAL), s));
 	printf("%02X [OBJ1PAL]:   %02x (%s)\n",
-	       IO_OBJ1PAL, mm[IO_OBJ1PAL], byte2bin_str(mm[IO_OBJ1PAL], s));
+	       IO_OBJ1PAL, mem_read_8(IO_OBJ1PAL), 
+		byte2bin_str(mem_read_8(IO_OBJ1PAL), s));
 	printf("%02X [WNDPOSY]:   %02x (%s)\n",
-	       IO_WNDPOSY, mm[IO_WNDPOSY], byte2bin_str(mm[IO_WNDPOSY], s));
+	       IO_WNDPOSY, mem_read_8(IO_WNDPOSY), 
+		byte2bin_str(mem_read_8(IO_WNDPOSY), s));
 	printf("%02X [WNDPOSX]:   %02x (%s)\n",
-	       IO_WNDPOSX, mm[IO_WNDPOSX], byte2bin_str(mm[IO_WNDPOSX], s));
+	       IO_WNDPOSX, mem_read_8(IO_WNDPOSX), 
+		byte2bin_str(mem_read_8(IO_WNDPOSX), s));
 	printf("%02X [DMACONT]:   %02x (%s)\n",
-	       IO_DMACONT, mm[IO_DMACONT], byte2bin_str(mm[IO_DMACONT], s));
+	       IO_DMACONT, mem_read_8(IO_DMACONT), 
+		byte2bin_str(mem_read_8(IO_DMACONT), s));
 	printf("%02X [IENABLE]:   %02x (%s)\n",
-	       IO_IENABLE, mm[IO_IENABLE], byte2bin_str(mm[IO_IENABLE], s));
+	       IO_IENABLE, mem_read_8(IO_IENABLE), 
+		byte2bin_str(mem_read_8(IO_IENABLE), s));
 }

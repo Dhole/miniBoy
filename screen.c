@@ -254,9 +254,9 @@ void screen_draw_line_obj(uint8_t line) {
 	// Y = 0 or Y => 144+16, discard sprite
 
 	int i, j, first;
-	uint16_t addr;
+	uint16_t addr, pos;
 	uint8_t obj_height, objs_line_len, obj_line;
-	uint8_t obj_line_a, obj_line_b;
+	uint8_t obj_line_a, obj_line_b, color;
 	obj_t objs[40];
 	obj_t *objs_line[40];
 
@@ -267,6 +267,8 @@ void screen_draw_line_obj(uint8_t line) {
 		obj_height = 8;
 		break;
 	case OPT_OBJ_Size_8x16:
+		printf("8x16 objects not supported yet\n");
+		//assert(1 == 2);
 		obj_height = 16;
 		break;
 	}
@@ -289,9 +291,12 @@ void screen_draw_line_obj(uint8_t line) {
 		if((objs[i].y != 0) && (objs[i].y < SCREEN_SPRITE_END_Y) &&
 		   (objs[i].y <= line) && ((objs[i].y + obj_height) > line)) {
 			objs_line[objs_line_len++] = &objs[i];
-			//printf("Object %d:\n", objs[i].id);
-			//printf("x: %02X, y: %02X, pat: %02X\n",
-			//       objs[i].x, objs[i].y, objs[i].pat);
+			/*
+			printf("Object %d:\n", objs[i].id);
+			printf("x: %02X, y: %02X, pat: %02X\n",
+			       objs[i].x, objs[i].y, objs[i].pat);
+			printf("\n");
+			*/
 			//return;
 		}
 	}
@@ -314,9 +319,12 @@ void screen_draw_line_obj(uint8_t line) {
 		obj_line_b = mem_read_8(0x8000 + objs_line[i]->pat * 16 +
 					obj_line * 2 + 1);
 		for (j = 0; j < 8; j++) {
-			obj_disp[line * 256 + (objs_line[i]->x + j) % 256] =
-				((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
+			pos = line * 256 + (objs_line[i]->x + j) % 256;
+			color = ((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
 				((obj_line_b & (1 << (7 - j))) ? 2 : 0);
+			if (color != 0x00) {
+				obj_disp[pos] = color;
+			}
 		}
 	}
 }
