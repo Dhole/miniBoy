@@ -58,8 +58,9 @@ event_t process_event(SDL_Event *e) {
 	return E_NOTHING;
 }
 
-int main_loop(Uint32 delta) {
+int main_loop(uint32_t delta) {
 	SDL_Event e;
+	uint32_t elapsed = delta;
 	// Capture events
 	while (SDL_PollEvent(&e)) {
 		switch(process_event(&e)) {
@@ -67,7 +68,7 @@ int main_loop(Uint32 delta) {
 			dmg_reset();
 			break;
 		case E_EXIT:
-			return 1;
+			return -1;
 			break;
 		default:
 			break;
@@ -77,12 +78,12 @@ int main_loop(Uint32 delta) {
 		//keyboard_update_keys();
 		// Do sound or whatever
 		// ...
-		dmg_run(delta, &debug_flag, &debug_pause);
+		elapsed = dmg_run(delta, &debug_flag, &debug_pause);
 
 		// Something
 		//randomize(screen_get_fb());
 	}
-	return 0;
+	return elapsed;
 }
 
 int main(int argc, char** argv) {
@@ -91,7 +92,7 @@ int main(int argc, char** argv) {
 	char *bios_path = NULL;
 	char *rom_path = NULL;
 	Uint32 start_time, time, frame;
-	uint32_t delta;
+	uint32_t delta, elapsed;
 
 	pause_emu = 0;
 	scale = 2;
@@ -129,13 +130,15 @@ int main(int argc, char** argv) {
 	start_time = SDL_GetTicks();
 	for (;;) {
 		delta = ((frame * 1000) / SCREEN_FPS) - time;
-		time += delta;
 		
-		if (main_loop(delta)) {
+		if ((elapsed = main_loop(delta)) == -1) {
 			break;
 		}
-
-		sdl_render(screen_get_fb());
+		time += elapsed;
+		
+		if (elapsed > 0) {
+			sdl_render(screen_get_fb());
+		}
 		
 	        // Sync to maximum fps
 		if (SDL_GetTicks() - start_time < time)  {

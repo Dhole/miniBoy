@@ -127,8 +127,8 @@ void dmg_reset() {
 	printf("Not implemented yet\n");
 }
 
-void dmg_run(uint32_t delta, int *debug_flag, int *debug_pause) {
-	int clk, cycles;
+uint32_t dmg_run(uint32_t delta, int *debug_flag, int *debug_pause) {
+	uint32_t clk, cycles;
 	//dmg_emulate_hardware(delta);
 	clk = 0;
 	screen_start_frame();
@@ -143,13 +143,16 @@ void dmg_run(uint32_t delta, int *debug_flag, int *debug_pause) {
 		} else {
 			cycles = cpu_step();	
 		}
-			
-		// If LCD on...!!!
-		screen_emulate(cycles);
 
-		timer_emulate(cycles);
-			
 		clk += cycles;
+			
+		timer_emulate(cycles);
+		//
+		// If LCD on...!!!
+		if(screen_emulate(cycles)) {
+			break;
+		}
 	}
 	//screen_write_fb();
+	return clk * 1000 / CPU_FREQ;
 }

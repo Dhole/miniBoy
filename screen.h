@@ -39,4 +39,6 @@ typedef struct {
 uint8_t *screen_get_fb();
 //void screen_write_fb();
 void screen_start_frame();
-void screen_emulate(uint32_t cycles);
+int screen_emulate(uint32_t cycles);
+void screen_write_8(uint16_t addr, uint8_t v);
+uint8_t screen_read_8(uint16_t addr);

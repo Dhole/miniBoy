@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include "memory.h"
 #include "io_regs.h"
+#include "screen.h"
 #include "rom.h"
 
 // temporary
@@ -131,6 +132,14 @@ void dma(uint16_t a) {
 }
 
 uint8_t mem_read_io_8(uint16_t addr) {
+	switch (addr) {
+		case 0xFF44:
+			return screen_read_8(addr);
+			break;
+		default:
+			break;
+
+	}
 	return mm[addr];
 }
 
@@ -159,12 +168,17 @@ void mem_write_io_8(uint16_t addr, uint8_t v) {
 		//printf("DMA %02x\n", v);
 		dma((uint16_t)v << 8);
 		break;
+	case 0xFF44:
+		screen_write_8(addr, v);
+		break;
 	default:
 		mm[addr] = v;
 	}
 }
 
 uint8_t mem_read_8(uint16_t addr) {
+	uint8_t tmp;
+
 	switch (mem_map(addr)) {
 	case MEM_MAP_BIOS:
 		return bios[addr];
@@ -179,7 +193,10 @@ uint8_t mem_read_8(uint16_t addr) {
 	case MEM_MAP_NOT_USABLE:
 		break;
 	case MEM_MAP_IO:
-		return mem_read_io_8(addr);
+		tmp = mem_read_io_8(addr);
+		//printf("read io at  %4X (%2X)\n", addr, tmp);
+		return tmp;
+		//return mem_read_io_8(addr);
 	case MEM_MAP_WRAM:
 	case MEM_MAP_VRAM:
 	case MEM_MAP_OAM:
@@ -211,6 +228,7 @@ void mem_write_8(uint16_t addr, uint8_t v) {
 	case MEM_MAP_NOT_USABLE:
 		break;
 	case MEM_MAP_IO:
+		//printf("write io at %4X (%2X)\n", addr, v);
 		mem_write_io_8(addr, v);
 		break;
 	case MEM_MAP_WRAM:

@@ -13,7 +13,28 @@ static uint8_t obj_disp[256 * 256];
 
 static int32_t t_oam, t_oam_vram, t_hblank, t_vblank;
 static uint8_t cur_line;
+static uint8_t reset;
 
+void screen_write_8(uint16_t addr, uint8_t v) {
+	switch (addr) {
+		case 0xFF44:
+			reset = 1;
+			break;
+		default:
+			break;
+	}
+}
+
+uint8_t screen_read_8(uint16_t addr) {
+	switch (addr) {
+		case 0xFF44:
+			return cur_line;
+			break;
+		default:
+			break;
+	}
+	return 0;
+}
 
 uint8_t *screen_get_fb() {
 	return fb;
@@ -38,7 +59,8 @@ void screen_start_frame() {
 	t_hblank = SCREEN_TL_HBLANK;
 	t_vblank = SCREEN_TF_VBLANK;
 
-	cur_line = SCREEN_LINES - 1;
+	//cur_line = SCREEN_LINES - 1;
+	cur_line = 0;
 	// Set window and obj layers transparent
 	for (j = 0; j < 256; j++) {
 		for (i = 0; i < 256; i++) {
@@ -343,22 +365,23 @@ void screen_draw_line(uint8_t line) {
 	screen_draw_line_fb(line);
 }
 
-void screen_emulate(uint32_t cycles) {
+int screen_emulate(uint32_t cycles) {
+	if (reset) {
+		reset = 0;
+		return 1;
+	}
+
 	t_oam -= cycles;
 	t_oam_vram -= cycles;
 	t_hblank -= cycles;
 	t_vblank -= cycles;
-
-	if (mem_read_8(IO_CURLINE) != cur_line) {
-		// !!! Reset register and LCD
-	}
 
 	// OAM mode 2
 	if (t_oam <= 0) {
 		cur_line = (cur_line + 1) % SCREEN_LINES;
 		//printf("line: %d\n", cur_line);
 		// update CURLINE REG
-		mem_write_8(IO_CURLINE, cur_line);
+		//mem_write_8(IO_CURLINE, cur_line);
 		
 		if (cur_line < SCREEN_SIZE_Y) {
 			// Set Mode Flag to OAM at LCDSTAT
@@ -402,4 +425,5 @@ void screen_emulate(uint32_t cycles) {
 		mem_bit_set(IO_IFLAGS, MASK_IO_INT_VBlank);
 		t_vblank += SCREEN_DUR_FRAME;
 	}
+	return 0;
 }

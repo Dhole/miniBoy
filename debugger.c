@@ -51,7 +51,10 @@ void com_help() {
 	       "clear [n]\n"
 	       "memory [start] [end]\n"
 	       "disas [start] [end]\n"
+	       "print [addr]\n"
+	       "write [addr] [value]"
 	       "io\n"
+	       "trace\n"
 	       "quit\n\n");
 }
 
@@ -205,6 +208,13 @@ int run_com(command_t *com) {
 	} else if (strncmp(name, "io", ARG_LEN) == 0 || name[0] == 'i') {
 		//printf("memory!\n");
 		mem_dump_io_regs();
+	} else if (strncmp(name, "print", ARG_LEN) == 0 || name[0] == 'p') {
+		printf("[%04X] %02X\n", (uint16_t)com->arg_a, 
+				mem_read_8((uint16_t)com->arg_a));
+	} else if (strncmp(name, "write", ARG_LEN) == 0 || name[0] == 'w') {
+		mem_write_8((uint16_t)com->arg_a, (uint8_t)com->arg_b);
+		printf("[%04X] %02X\n", (uint16_t)com->arg_a, 
+				mem_read_8((uint16_t)com->arg_a));
 	} else if (strncmp(name, "quit", ARG_LEN) == 0 || name[0] == 'q') {
 		exit(0);
 	} else {

@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 #include "memory.h"
 #include "lr35902.h"
 #include "io_regs.h"
@@ -34,12 +35,13 @@ void timer_emulate(uint32_t cycles) {
 
 	cyc_cnt += cycles;
 
-	if (cyc_cnt / div > 0) {
+	while (cyc_cnt / div > 0) {
 		cyc_cnt -= div;
 
 		cnt = mem_read_8(IO_TIMECNT) + 1;
 		if (cnt == 0) {
 			// Overflow: Interrupt Timer
+			//printf("Timer Overflow\n");
 			mem_bit_set(IO_IFLAGS, MASK_IO_INT_Timer_Overflow);
 			mem_write_8(IO_TIMECNT, mem_read_8(IO_TIMEMOD));
 		} else {
