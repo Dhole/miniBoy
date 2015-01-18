@@ -52,7 +52,7 @@ void com_help() {
 	       "memory [start] [end]\n"
 	       "disas [start] [end]\n"
 	       "print [addr]\n"
-	       "write [addr] [value]"
+	       "write [addr] [value]\n"
 	       "io\n"
 	       "trace\n"
 	       "quit\n\n");

@@ -14,11 +14,34 @@ static uint8_t obj_disp[256 * 256];
 static int32_t t_oam, t_oam_vram, t_hblank, t_vblank;
 static uint8_t cur_line;
 static uint8_t reset;
+static uint8_t bg_pal[4], obj0_pal[4], obj1_pal[4];
+static uint8_t bgrdpal_reg, obj0pal_reg, obj1pal_reg;
+
+void set_pal(uint8_t *pal, uint8_t v) {
+	pal[0] = v & 0x03;
+	pal[1] = (v & 0x0C) >> 2;
+	pal[2] = (v & 0x30) >> 4;
+	pal[3] = (v & 0xC0) >> 6;
+}
 
 void screen_write_8(uint16_t addr, uint8_t v) {
 	switch (addr) {
 		case 0xFF44:
 			reset = 1;
+			break;
+		case 0xFF47:
+			bgrdpal_reg = v;
+			set_pal(bg_pal, v);
+			break;
+		case 0xFF48:
+			obj0pal_reg = v;
+			set_pal(obj0_pal, v);
+			obj0_pal[0] = 4; // Color 0 should be transparency
+			break;
+		case 0xFF49:
+			obj1pal_reg = v;
+			set_pal(obj1_pal, v);
+			obj1_pal[0] = 4; // Color 0 should be transparency
 			break;
 		default:
 			break;
@@ -29,6 +52,15 @@ uint8_t screen_read_8(uint16_t addr) {
 	switch (addr) {
 		case 0xFF44:
 			return cur_line;
+			break;
+		case 0xFF47:
+			return bgrdpal_reg;
+			break;
+		case 0xFF48:
+			return obj0pal_reg;
+			break;
+		case 0xFF49:
+			return obj1pal_reg;
 			break;
 		default:
 			break;
@@ -64,40 +96,14 @@ void screen_start_frame() {
 	// Set window and obj layers transparent
 	for (j = 0; j < 256; j++) {
 		for (i = 0; i < 256; i++) {
+			// Using value 4 as transparency
 			bg_disp[j * 256 + 1] = 4;
-			win_disp[j * 256 + i] = 5;
-			obj_disp[j * 256 + i] = 0;
+			win_disp[j * 256 + i] = 4;
+			obj_disp[j * 256 + i] = 4;
 		}
 	}
 
 }
-
-/*
-void screen_write_fb() {
-	int i, j;
-	if (mem_bit_test(IO_LCDCONT, MASK_IO_LCDCONT_BG_Display_Enable)) {
-		for (j = 0; j < SCREEN_SIZE_Y; j++) {
-			for (i = 0; i < SCREEN_SIZE_X; i++) {
-				fb[j * SCREEN_SIZE_X + i] = bg_disp[j * 256 + i];
-			}
-		}
-	}
-	if (mem_bit_test(IO_LCDCONT, MASK_IO_LCDCONT_Window_Display_Enable)) {
-		for (j = 0; j < SCREEN_SIZE_Y; j++) {
-			for (i = 0; i < SCREEN_SIZE_X; i++) {
-				fb[j * SCREEN_SIZE_X + i] = win_disp[j * 160 + i];
-			}
-		}
-	}
-	if (mem_bit_test(IO_LCDCONT, MASK_IO_LCDCONT_OBJ_Display_Enable)) {
-		for (j = 0; j < SCREEN_SIZE_Y; j++) {
-			for (i = 0; i < SCREEN_SIZE_X; i++) {
-				fb[j * SCREEN_SIZE_X + i] = obj_disp[j * 160 + i];
-			}
-		}
-	}
-}
-*/
 
 void screen_draw_line_fb(uint8_t line) {
 	int i;
@@ -110,14 +116,13 @@ void screen_draw_line_fb(uint8_t line) {
 		}
 		// check transparency
 		if (obj_disp[(line + SCREEN_SPRITE_INI_Y) * 256 +
-			     i + SCREEN_SPRITE_INI_X] != 0) { 
+			     i + SCREEN_SPRITE_INI_X] < 4) { 
 			fb[line * SCREEN_SIZE_X + i] =
 				obj_disp[(line + SCREEN_SPRITE_INI_Y) * 256 +
 				i + SCREEN_SPRITE_INI_X];
 		}
 		
 	}
-	// Apply palette at end of each draw_line_{bg, win, obj} !!!
 }
 
 void dump_some_layer() {
@@ -176,9 +181,11 @@ void screen_draw_line_bg(uint8_t line) {
 		obj_line_a = mem_read_8(tile_data + obj * 16 + obj_line * 2);
 		obj_line_b = mem_read_8(tile_data + obj * 16 + obj_line * 2 + 1);
 		for (j = 0; j < 8; j++) {
-			bg_disp[line * 256 + (i * 8 + scroll_x + j) % 256] =
+			bg_disp[line * 256 + (i * 8 - scroll_x + j) % 256] =
+				bg_pal[
 				((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
-				((obj_line_b & (1 << (7 - j))) ? 2 : 0);
+				((obj_line_b & (1 << (7 - j))) ? 2 : 0)
+				];
 		}
 	}
 }
@@ -279,6 +286,8 @@ void screen_draw_line_obj(uint8_t line) {
 	uint16_t addr, pos;
 	uint8_t obj_height, objs_line_len, obj_line;
 	uint8_t obj_line_a, obj_line_b, color;
+	uint8_t x_flip, y_flip;
+	uint8_t *pal;
 	obj_t objs[40];
 	obj_t *objs_line[40];
 
@@ -289,7 +298,7 @@ void screen_draw_line_obj(uint8_t line) {
 		obj_height = 8;
 		break;
 	case OPT_OBJ_Size_8x16:
-		printf("8x16 objects not supported yet\n");
+		//printf("8x16 objects not supported yet\n");
 		//assert(1 == 2);
 		obj_height = 16;
 		break;
@@ -335,17 +344,29 @@ void screen_draw_line_obj(uint8_t line) {
 
 	// Only taking into account 8x8!!!
 	for (i = first; i < objs_line_len; i++) {
+		x_flip = (objs_line[i]->flags & OPT_OBJ_Flag_xflip) ? 1 : 0;
+		y_flip = (objs_line[i]->flags & OPT_OBJ_Flag_yflip) ? 1 : 0;
 		obj_line = (line - objs_line[i]->y) % obj_height;
-		obj_line_a = mem_read_8(0x8000 + objs_line[i]->pat * 16 +
-					obj_line * 2);
-		obj_line_b = mem_read_8(0x8000 + objs_line[i]->pat * 16 +
-					obj_line * 2 + 1);
+		if (y_flip) {
+			obj_line = obj_height - 1 - obj_line;
+		}
+		obj_line_a = mem_read_8(0x8000 + objs_line[i]->pat * 16 + 
+				obj_line * 2);
+		obj_line_b = mem_read_8(0x8000 + objs_line[i]->pat * 16 + 
+				obj_line * 2 + 1);
+		if (objs_line[i]->flags & OPT_OBJ_Flag_palette) {
+			pal = obj1_pal;
+		} else {
+			pal = obj0_pal;
+		}
 		for (j = 0; j < 8; j++) {
 			pos = line * 256 + (objs_line[i]->x + j) % 256;
-			color = ((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
-				((obj_line_b & (1 << (7 - j))) ? 2 : 0);
-			if (color != 0x00) {
-				obj_disp[pos] = color;
+			color = pal[
+				((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
+				((obj_line_b & (1 << (7 - j))) ? 2 : 0)
+				];
+			if (color < 4) {
+				obj_disp[x_flip ? 7 - pos : pos] = color;
 			}
 		}
 	}

@@ -133,11 +133,14 @@ void dma(uint16_t a) {
 
 uint8_t mem_read_io_8(uint16_t addr) {
 	switch (addr) {
-		case 0xFF44:
-			return screen_read_8(addr);
-			break;
-		default:
-			break;
+	case 0xFF44:
+	case 0xFF47:
+	case 0xFF48:
+	case 0xFF49:
+		return screen_read_8(addr);
+		break;
+	default:
+		break;
 
 	}
 	return mm[addr];
@@ -169,6 +172,9 @@ void mem_write_io_8(uint16_t addr, uint8_t v) {
 		dma((uint16_t)v << 8);
 		break;
 	case 0xFF44:
+	case 0xFF47:
+	case 0xFF48:
+	case 0xFF49:
 		screen_write_8(addr, v);
 		break;
 	default:
