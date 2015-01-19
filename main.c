@@ -12,6 +12,7 @@ Uint32 start_time, last_time, elapsed_time;
 Uint32 scale;
 int pause_emu;
 int debug_flag, debug_pause;
+uint8_t keypad[8] = {0,0,0,0,0,0,0,0};
 
 void usage(char *argv0) {
 	printf("Usage: %s [-v] [-d] [-b bios] rom\n", argv0);
@@ -50,11 +51,65 @@ event_t process_event(SDL_Event *e) {
 			case KEY_EXIT:
 			        return E_EXIT;
 				break;
+			// GameBoy Keys
+			case KEY_DOWN:
+				keypad[KEYPAD_DOWN] = 1;
+				break;
+			case KEY_UP:
+				keypad[KEYPAD_UP] = 1;
+				break;
+			case KEY_LEFT:
+				keypad[KEYPAD_LEFT] = 1;
+				break;
+			case KEY_RIGHT:
+				keypad[KEYPAD_RIGHT] = 1;
+				break;
+			case KEY_START:
+				keypad[KEYPAD_START] = 1;
+				break;
+			case KEY_SELECT:
+				keypad[KEYPAD_SELECT] = 1;
+				break;
+			case KEY_B:
+				keypad[KEYPAD_B] = 1;
+				break;
+			case KEY_A:
+				keypad[KEYPAD_A] = 1;
+				break;
+			default:
+				break;
+			}
+		} else if (e->type == SDL_KEYUP) {
+			switch (e->key.keysym.sym) {
+			// GameBoy Keys
+			case KEY_DOWN:
+				keypad[KEYPAD_DOWN] = 0;
+				break;
+			case KEY_UP:
+				keypad[KEYPAD_UP] = 0;
+				break;
+			case KEY_LEFT:
+				keypad[KEYPAD_LEFT] = 0;
+				break;
+			case KEY_RIGHT:
+				keypad[KEYPAD_RIGHT] = 0;
+				break;
+			case KEY_START:
+				keypad[KEYPAD_START] = 0;
+				break;
+			case KEY_SELECT:
+				keypad[KEYPAD_SELECT] = 0;
+				break;
+			case KEY_B:
+				keypad[KEYPAD_B] = 0;
+				break;
+			case KEY_A:
+				keypad[KEYPAD_A] = 0;
+				break;
 			default:
 				break;
 			}
 		}
-	}
 	return E_NOTHING;
 }
 

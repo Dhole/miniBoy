@@ -6,10 +6,33 @@
 #define KEY_SCALE_2 SDLK_2
 #define KEY_EXIT SDLK_ESCAPE
 
+// Key mapping
+
+// GameBoy keys
+#define KEY_A SDL_SCANCODE_Z
+#define KEY_B SDL_SCANCODE_X
+#define KEY_UP SDL_SCANCODE_UP
+#define KEY_DOWN SDL_SCANCODE_DOWN
+#define KEY_LEFT SDL_SCANCODE_LEFT
+#define KEY_RRIGHT SDL_SCANCODE_RIGHT
+#define KEY_SELECT SDL_SCANCODE_BACKSPACE
+#define KEY_START SDL_SCANCODE_ENTER
+
 typedef enum {
 	E_RESET,
 	E_EXIT,
 	E_NOTHING
 } event_t;
+
+typedef enum {
+	KEYPAD_DOWN,
+	KEYPAD_UP,
+	KEYPAD_LEFT,
+	KEYPAD_RIGHT,
+	KEYPAD_START,
+	KEYPAD_SELECT,
+	KEYPAD_B,
+	KEYPAD_A
+} keypad_t;
 
 event_t process_event(SDL_Event *e);
