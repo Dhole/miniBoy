@@ -53,7 +53,7 @@ uint8_t timer_read_8(uint16_t addr) {
 		return timemod_reg;
 		break;
 	case IO_TIMCONT:
-		return timcont_reg;
+		return timcont_reg | 0xF8;
 		break;
 	default:
 		break;

@@ -12,7 +12,7 @@ static uint8_t win_disp[256 * 256];
 static uint8_t obj_disp[256 * 256];
 
 static int32_t t_oam, t_oam_vram, t_hblank, t_vblank;
-static uint8_t cur_line;
+static uint8_t cur_line, cmp_line;
 static uint8_t reset;
 static uint8_t bg_pal[4], obj0_pal[4], obj1_pal[4];
 static uint8_t bgrdpal_reg, obj0pal_reg, obj1pal_reg;
@@ -27,33 +27,36 @@ void set_pal(uint8_t *pal, uint8_t v) {
 
 void screen_write_8(uint16_t addr, uint8_t v) {
 	switch (addr) {
-		case 0xFF44:
+		case IO_CURLINE:
 			reset = 1;
 			break;
-		case 0xFF47:
+		case IO_CMPLINE:
+			cmp_line = v;
+			break;
+		case IO_BGRDPAL:
 			bgrdpal_reg = v;
 			set_pal(bg_pal, v);
 			break;
-		case 0xFF48:
+		case IO_OBJ0PAL:
 			obj0pal_reg = v;
 			set_pal(obj0_pal, v);
 			obj0_pal[0] = 4; // Color 0 should be transparency
 			break;
-		case 0xFF49:
+		case IO_OBJ1PAL:
 			obj1pal_reg = v;
 			set_pal(obj1_pal, v);
 			obj1_pal[0] = 4; // Color 0 should be transparency
 			break;
-		case 0xFF42:
+		case IO_SCROLLY:
 			scrolly_reg = v;
 			break;
-		case 0xFF43:
+		case IO_SCROLLX:
 			scrollx_reg = v;
 			break;
-		case 0xFF4A:
+		case IO_WNDPOSY:
 			wndposy_reg = v;
 			break;
-		case 0xFF4B:
+		case IO_WNDPOSX:
 			wndposx_reg = v;
 			break;
 		default:
@@ -63,28 +66,31 @@ void screen_write_8(uint16_t addr, uint8_t v) {
 
 uint8_t screen_read_8(uint16_t addr) {
 	switch (addr) {
-		case 0xFF44:
+		case IO_CURLINE:
 			return cur_line;
 			break;
-		case 0xFF47:
+		case IO_CMPLINE:
+			return cmp_line;
+			break;
+		case IO_BGRDPAL:
 			return bgrdpal_reg;
 			break;
-		case 0xFF48:
+		case IO_OBJ0PAL:
 			return obj0pal_reg;
 			break;
-		case 0xFF49:
+		case IO_OBJ1PAL:
 			return obj1pal_reg;
 			break;
-		case 0xFF42:
+		case IO_SCROLLY:
 			return scrolly_reg;
 			break;
-		case 0xFF43:
+		case IO_SCROLLX:
 			return scrollx_reg;
 			break;
-		case 0xFF4A:
+		case IO_WNDPOSY:
 			return wndposy_reg;
 			break;
-		case 0xFF4B:
+		case IO_WNDPOSX:
 			return wndposx_reg;
 			break;
 		default:
@@ -423,12 +429,25 @@ int screen_emulate(uint32_t cycles) {
 		//printf("line: %d\n", cur_line);
 		// update CURLINE REG
 		//mem_write_8(IO_CURLINE, cur_line);
+		if (cur_line == cmp_line) {
+			mem_bit_set(IO_LCDSTAT, MASK_IO_LCDSTAT_Coincidence_Flag);
+			if (mem_bit_test(IO_LCDSTAT,
+					MASK_IO_LCDSTAT_LYC_LY_Coincidence_Interrupt)) {
+				mem_bit_set(IO_IFLAGS, MASK_IO_INT_LCDSTAT_Int);
+			}
+		} else {
+			mem_bit_unset(IO_LCDSTAT, MASK_IO_LCDSTAT_Coincidence_Flag);
+		}
 		
 		if (cur_line < SCREEN_SIZE_Y) {
 			// Set Mode Flag to OAM at LCDSTAT
 			mem_bit_unset(IO_LCDSTAT, MASK_IO_LCDSTAT_Mode_Flag);
 			mem_bit_set(IO_LCDSTAT, OPT_Mode_OAM);
-			// Interrupt OAM !!!
+			// Interrupt OAM
+			if (mem_bit_test(IO_LCDSTAT, 
+					MASK_IO_LCDSTAT_Mode_2_OAM_Interrupt)) {
+				mem_bit_set(IO_IFLAGS, MASK_IO_INT_LCDSTAT_Int);
+			}
 		}
 		
 		t_oam += SCREEN_DUR_LINE;
@@ -440,7 +459,6 @@ int screen_emulate(uint32_t cycles) {
 			// Set Mode Flag to OAM VRAM at LCDSTAT
 			mem_bit_unset(IO_LCDSTAT, MASK_IO_LCDSTAT_Mode_Flag);
 			mem_bit_set(IO_LCDSTAT, OPT_Mode_OAM_VRAM);
-			//mem_bit_set(IO_IFLAGS, MASK_IO_INT_VBlank);
 			// draw line
 			screen_draw_line(cur_line);
 		}
@@ -452,8 +470,11 @@ int screen_emulate(uint32_t cycles) {
 			// Set Mode Flag to HBLANK at LCDSTAT
 			mem_bit_unset(IO_LCDSTAT, MASK_IO_LCDSTAT_Mode_Flag);
 			mem_bit_set(IO_LCDSTAT, OPT_Mode_HBlank);
-			// Interrupt HBlank !!!
-			//mem_bit_set(IO_IFLAGS, MASK_IO_INT_VBlank);
+			// Interrupt HBlank
+			if (mem_bit_test(IO_LCDSTAT, 
+					MASK_IO_LCDSTAT_Mode_0_HBlank_Interrupt)) {
+				mem_bit_set(IO_IFLAGS, MASK_IO_INT_LCDSTAT_Int);
+			}
 		}
 		t_hblank += SCREEN_DUR_LINE;;
 	}
@@ -464,6 +485,10 @@ int screen_emulate(uint32_t cycles) {
 		mem_bit_set(IO_LCDSTAT, OPT_Mode_VBlank);
 		// Interrupt VBlank
 		mem_bit_set(IO_IFLAGS, MASK_IO_INT_VBlank);
+			if (mem_bit_test(IO_LCDSTAT, 
+					MASK_IO_LCDSTAT_Mode_1_VBlank_Interrupt)) {
+				mem_bit_set(IO_IFLAGS, MASK_IO_INT_LCDSTAT_Int);
+			}
 		t_vblank += SCREEN_DUR_FRAME;
 	}
 	return 0;

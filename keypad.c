@@ -22,7 +22,7 @@ uint8_t keypad_read_8(uint16_t addr) {
 
 	switch (addr) {
 	case IO_JOYPAD:
-		return p1_reg;
+		return p1_reg | 0xC0;
 		break;
 	default:
 		break;

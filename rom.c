@@ -273,6 +273,9 @@ void mbc1_write_8(uint16_t addr, uint8_t v) {
 			rom_ram_mode = MBC_ROM_MODE;
 		}
 	}
+	if (addr >= 0xA000 && addr < 0xC000) {
+		ram[addr - 0xA000 + 0x2000 * ram_bank] = v;
+	}
 }
 
 uint8_t rom_read_8(uint16_t addr) {

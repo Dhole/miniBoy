@@ -27,7 +27,7 @@ void mem_init() {
 	bios_size = 0;
 }
 
-void mem_load(uint16_t addr, uint8_t * buf, unsigned int size) {
+void mem_load(uint16_t addr, uint8_t *buf, unsigned int size) {
 	memcpy(&mm[addr], buf, size);
 }
 
@@ -135,14 +135,15 @@ void dma(uint16_t a) {
 
 uint8_t mem_read_io_8(uint16_t addr) {
 	switch (addr) {
-	case 0xFF42:
-	case 0xFF43:
-	case 0xFF44:
-	case 0xFF47:
-	case 0xFF48:
-	case 0xFF49:
-	case 0xFF4A:
-	case 0xFF4B:
+	case IO_CURLINE:
+	case IO_CMPLINE:
+	case IO_BGRDPAL:
+	case IO_OBJ0PAL:
+	case IO_OBJ1PAL:
+	case IO_SCROLLY:
+	case IO_SCROLLX:
+	case IO_WNDPOSY:
+	case IO_WNDPOSX:
 		return screen_read_8(addr);
 		break;
 	case IO_JOYPAD:
@@ -153,6 +154,9 @@ uint8_t mem_read_io_8(uint16_t addr) {
 	case IO_TIMEMOD:
 	case IO_TIMCONT:
 		return timer_read_8(addr);
+		break;
+	case IO_IFLAGS:
+		return mm[addr] |= 0xE0;
 	default:
 		break;
 
@@ -181,18 +185,20 @@ void mem_write_io_8(uint16_t addr, uint8_t v) {
 			return;
 		}
 		break;
-	case 0xFF46:
+	case IO_DMACONT:
 		//printf("DMA %02x\n", v);
 		dma((uint16_t)v << 8);
+		mm[addr] = v;
 		break;
-	case 0xFF42:
-	case 0xFF43:
-	case 0xFF44:
-	case 0xFF47:
-	case 0xFF48:
-	case 0xFF49:
-	case 0xFF4A:
-	case 0xFF4B:
+	case IO_CURLINE:
+	case IO_CMPLINE:
+	case IO_BGRDPAL:
+	case IO_OBJ0PAL:
+	case IO_OBJ1PAL:
+	case IO_SCROLLY:
+	case IO_SCROLLX:
+	case IO_WNDPOSY:
+	case IO_WNDPOSX:
 		screen_write_8(addr, v);
 		break;
 	case IO_JOYPAD:
@@ -222,7 +228,7 @@ uint8_t mem_read_8(uint16_t addr) {
 		return rom_read_8(addr);
 		break;
 	case MEM_MAP_RAM_ECHO:
-		return mm[addr - 2000];
+		return mm[addr - 0x2000];
 		break;
 	case MEM_MAP_NOT_USABLE:
 		break;
@@ -246,9 +252,9 @@ uint16_t mem_read_16(uint16_t addr) {
 }
 
 void mem_write_8(uint16_t addr, uint8_t v) {
-	if(addr == 0xFF43 && v != 0) {
+	/*if (addr == 0xFF43) {
 		printf("Writing SCROLLX: %d\n", v);
-	}
+	}*/
 	switch (mem_map(addr)) {
 	case MEM_MAP_BIOS:
 		break;
