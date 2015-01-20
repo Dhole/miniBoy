@@ -6,7 +6,9 @@
 #include "memory.h"
 #include "io_regs.h"
 #include "screen.h"
+#include "keypad.h"
 #include "rom.h"
+#include "timer.h"
 
 // temporary
 #include <assert.h>
@@ -133,12 +135,24 @@ void dma(uint16_t a) {
 
 uint8_t mem_read_io_8(uint16_t addr) {
 	switch (addr) {
+	case 0xFF42:
+	case 0xFF43:
 	case 0xFF44:
 	case 0xFF47:
 	case 0xFF48:
 	case 0xFF49:
+	case 0xFF4A:
+	case 0xFF4B:
 		return screen_read_8(addr);
 		break;
+	case IO_JOYPAD:
+		return keypad_read_8(addr);
+		break;
+	case IO_DIVIDER:
+	case IO_TIMECNT:
+	case IO_TIMEMOD:
+	case IO_TIMCONT:
+		return timer_read_8(addr);
 	default:
 		break;
 
@@ -171,11 +185,24 @@ void mem_write_io_8(uint16_t addr, uint8_t v) {
 		//printf("DMA %02x\n", v);
 		dma((uint16_t)v << 8);
 		break;
+	case 0xFF42:
+	case 0xFF43:
 	case 0xFF44:
 	case 0xFF47:
 	case 0xFF48:
 	case 0xFF49:
+	case 0xFF4A:
+	case 0xFF4B:
 		screen_write_8(addr, v);
+		break;
+	case IO_JOYPAD:
+		keypad_write_8(addr, v);
+		break;
+	case IO_DIVIDER:
+	case IO_TIMECNT:
+	case IO_TIMEMOD:
+	case IO_TIMCONT:
+		timer_write_8(addr, v);
 		break;
 	default:
 		mm[addr] = v;
@@ -183,8 +210,9 @@ void mem_write_io_8(uint16_t addr, uint8_t v) {
 }
 
 uint8_t mem_read_8(uint16_t addr) {
-	uint8_t tmp;
-
+	if(addr == 0xFF43 && mm[addr] != 0) {
+		printf("Writing SCROLLX: %d\n", mm[addr]);
+	}
 	switch (mem_map(addr)) {
 	case MEM_MAP_BIOS:
 		return bios[addr];
@@ -199,10 +227,8 @@ uint8_t mem_read_8(uint16_t addr) {
 	case MEM_MAP_NOT_USABLE:
 		break;
 	case MEM_MAP_IO:
-		tmp = mem_read_io_8(addr);
+		return mem_read_io_8(addr);
 		//printf("read io at  %4X (%2X)\n", addr, tmp);
-		return tmp;
-		//return mem_read_io_8(addr);
 	case MEM_MAP_WRAM:
 	case MEM_MAP_VRAM:
 	case MEM_MAP_OAM:
@@ -211,7 +237,6 @@ uint8_t mem_read_8(uint16_t addr) {
 		break;
 	}
 	return mm[addr];
-	// Handle IO mappings???
 }
 
 uint16_t mem_read_16(uint16_t addr) {
@@ -221,6 +246,9 @@ uint16_t mem_read_16(uint16_t addr) {
 }
 
 void mem_write_8(uint16_t addr, uint8_t v) {
+	if(addr == 0xFF43 && v != 0) {
+		printf("Writing SCROLLX: %d\n", v);
+	}
 	switch (mem_map(addr)) {
 	case MEM_MAP_BIOS:
 		break;

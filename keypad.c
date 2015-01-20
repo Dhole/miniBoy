@@ -1,23 +1,63 @@
-#include <stdlib.h>
-#include <SDL2/SDL.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdio.h>
+#include "keypad.h"
+#include "io_regs.h"
+#include "memory.h"
 
-void keyboard_update_keys(uint8_t key[])
-{
-    const Uint8 *keystates = SDL_GetKeyboardState( NULL );
-    key[0x0] = keystates[KEY_0];
-    key[0x1] = keystates[KEY_1];
-    key[0x2] = keystates[KEY_2];
-    key[0x3] = keystates[KEY_3];
-    key[0x4] = keystates[KEY_4];
-    key[0x5] = keystates[KEY_5];
-    key[0x6] = keystates[KEY_6];
-    key[0x7] = keystates[KEY_7];
-    key[0x8] = keystates[KEY_8];
-    key[0x9] = keystates[KEY_9];
-    key[0xA] = keystates[KEY_A];
-    key[0xB] = keystates[KEY_B];
-    key[0xC] = keystates[KEY_C];
-    key[0xD] = keystates[KEY_D];
-    key[0xE] = keystates[KEY_E];
-    key[0xF] = keystates[KEY_F];
+static uint8_t keypad[8];
+static uint8_t p1_reg;
+
+uint8_t keypad_read_8(uint16_t addr) {
+	p1_reg &= 0xF0;
+
+	p1_reg |= (((p1_reg & 0x10) || !keypad[KEYPAD_RIGHT]) & 
+		((p1_reg & 0x20) || !keypad[KEYPAD_A])) ? (0x01 << 0) : 0;
+	p1_reg |= (((p1_reg & 0x10) || !keypad[KEYPAD_LEFT]) & 
+		((p1_reg & 0x20) || !keypad[KEYPAD_B])) ? (0x01 << 1) : 0;
+	p1_reg |= (((p1_reg & 0x10) || !keypad[KEYPAD_UP]) & 
+		((p1_reg & 0x20) || !keypad[KEYPAD_SELECT])) ? (0x01 << 2) : 0;
+	p1_reg |= (((p1_reg & 0x10) || !keypad[KEYPAD_DOWN]) & 
+		((p1_reg & 0x20) || !keypad[KEYPAD_START])) ? (0x01 << 3) : 0;
+
+	switch (addr) {
+	case IO_JOYPAD:
+		return p1_reg;
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
+void keypad_write_8(uint16_t addr, uint8_t v) {
+	switch (addr) {
+	case IO_JOYPAD:
+		p1_reg = (p1_reg & 0xCF) | (v & 0x30);
+		break;
+	default:
+		break;
+	}
+}
+
+void keypad_emulate(uint8_t *keypad_state) {
+	if (!(p1_reg & 0x10)) {
+		if ((!keypad_state[KEYPAD_RIGHT] && keypad[KEYPAD_RIGHT]) ||
+		    (!keypad_state[KEYPAD_LEFT] && keypad[KEYPAD_LEFT]) ||
+		    (!keypad_state[KEYPAD_UP] && keypad[KEYPAD_UP]) ||
+		    (!keypad_state[KEYPAD_DOWN] && keypad[KEYPAD_DOWN])) {
+			mem_bit_set(IO_IFLAGS, MASK_IO_INT_High_to_Low_P10_P13);
+		}
+	}
+	if (!(p1_reg & 0x20)) {
+		if ((!keypad_state[KEYPAD_A] && keypad[KEYPAD_A]) ||
+		    (!keypad_state[KEYPAD_B] && keypad[KEYPAD_B]) ||
+		    (!keypad_state[KEYPAD_SELECT] && keypad[KEYPAD_SELECT]) ||
+		    (!keypad_state[KEYPAD_START] && keypad[KEYPAD_START])) {
+			mem_bit_set(IO_IFLAGS, MASK_IO_INT_High_to_Low_P10_P13);
+		}
+
+	}
+
+	memcpy(keypad, keypad_state, sizeof(keypad));
 }

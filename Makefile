@@ -16,8 +16,8 @@ all: miniBoy
 #lr35902_test: lr35902.o memory.o string_fun.o lr35902_test.c
 #	clang lr35902.o memory.o string_fun.o lr35902_test.c -o lr35902_test
 
-miniBoy: sdl.o screen.o timer.o string_fun.o insertion_sort.o linenoise.o debugger.o lr35902.o dmg.o rom.o memory.o main.c
-	$(CC) sdl.o screen.o timer.o string_fun.o insertion_sort.o linenoise.o debugger.o lr35902.o dmg.o rom.o memory.o main.c -o miniBoy $(SDL)
+miniBoy: sdl.o screen.o timer.o keypad.o string_fun.o insertion_sort.o linenoise.o debugger.o lr35902.o dmg.o rom.o memory.o main.c
+	$(CC) sdl.o screen.o timer.o keypad.o string_fun.o insertion_sort.o linenoise.o debugger.o lr35902.o dmg.o rom.o memory.o main.c -o miniBoy $(SDL)
 
 lr35902.o: lr35902.c
 	$(CC) -c lr35902.c
@@ -48,6 +48,9 @@ screen.o: screen.c
 
 timer.o: timer.c
 	$(CC) -c timer.c
+
+keypad.o: keypad.c
+	$(CC) -c keypad.c
 
 sdl.o: sdl.c
 	$(CC) -c sdl.c

@@ -242,7 +242,11 @@ uint8_t mbc1_read_8(uint16_t addr) {
 
 void mbc1_write_8(uint16_t addr, uint8_t v) {
 	if (addr < 0x2000) {
-		ram_enable = 1;
+		if (v) {
+			ram_enable = 1;
+		} else {
+			ram_enable = 0;
+		}
 		return;
 	}
 	if (addr < 0x4000) {
@@ -255,12 +259,19 @@ void mbc1_write_8(uint16_t addr, uint8_t v) {
 	}
 	if (addr < 0x6000) {
 		if (rom_ram_mode == MBC_ROM_MODE) {
-			v &= 0x07;
+			v &= 0x03;
 			rom_bank = (rom_bank & 0x1F) | (v << 5);
 		} else {
 			ram_bank = v & 0x03;
 		}
 		return;
+	}
+	if (addr < 0x8000) {
+		if (v) { 
+			rom_ram_mode = MBC_RAM_MODE;
+		} else { 
+			rom_ram_mode = MBC_ROM_MODE;
+		}
 	}
 }
 

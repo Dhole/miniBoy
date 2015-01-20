@@ -16,6 +16,7 @@ static uint8_t cur_line;
 static uint8_t reset;
 static uint8_t bg_pal[4], obj0_pal[4], obj1_pal[4];
 static uint8_t bgrdpal_reg, obj0pal_reg, obj1pal_reg;
+static uint8_t scrollx_reg, scrolly_reg, wndposx_reg, wndposy_reg;
 
 void set_pal(uint8_t *pal, uint8_t v) {
 	pal[0] = v & 0x03;
@@ -43,6 +44,18 @@ void screen_write_8(uint16_t addr, uint8_t v) {
 			set_pal(obj1_pal, v);
 			obj1_pal[0] = 4; // Color 0 should be transparency
 			break;
+		case 0xFF42:
+			scrolly_reg = v;
+			break;
+		case 0xFF43:
+			scrollx_reg = v;
+			break;
+		case 0xFF4A:
+			wndposy_reg = v;
+			break;
+		case 0xFF4B:
+			wndposx_reg = v;
+			break;
 		default:
 			break;
 	}
@@ -61,6 +74,18 @@ uint8_t screen_read_8(uint16_t addr) {
 			break;
 		case 0xFF49:
 			return obj1pal_reg;
+			break;
+		case 0xFF42:
+			return scrolly_reg;
+			break;
+		case 0xFF43:
+			return scrollx_reg;
+			break;
+		case 0xFF4A:
+			return wndposy_reg;
+			break;
+		case 0xFF4B:
+			return wndposx_reg;
 			break;
 		default:
 			break;
@@ -136,10 +161,9 @@ void dump_some_layer() {
 	}
 	printf("\n");
 }
-
+// scrolly_reg can't change during frame !!!
 void screen_draw_line_bg(uint8_t line) {
 	uint16_t bg_tile_map, tile_data;
-	uint8_t scroll_x, scroll_y; // scroll_y can't change during frame !!!
 	uint8_t oam_row, obj_line;
 	uint8_t i, j;
 	uint8_t obj_line_a, obj_line_b;
@@ -147,8 +171,6 @@ void screen_draw_line_bg(uint8_t line) {
 	
 	// Background
 	
-	scroll_x = mem_read_8(IO_SCROLLX);
-	scroll_y = mem_read_8(IO_SCROLLY);
 	switch (mem_bit_test(IO_LCDCONT,
 			     MASK_IO_LCDCONT_BG_Tile_Map_Display_Select)) {
 	case OPT_BG_Tile_Map_9800_9BFF:
@@ -170,8 +192,8 @@ void screen_draw_line_bg(uint8_t line) {
 	}
 	
 	// WIP WIP WIP
-	oam_row = (line + scroll_y) / 8;
-	obj_line = (line + scroll_y) % 8;
+	oam_row = (line + scrolly_reg) / 8;
+	obj_line = (line + scrolly_reg) % 8;
 	for (i = 0; i < 32; i++) {
 		if (tile_data == 0x9000) {
 			obj = (int8_t)mem_read_8(bg_tile_map + oam_row * 32 + i);
@@ -181,7 +203,7 @@ void screen_draw_line_bg(uint8_t line) {
 		obj_line_a = mem_read_8(tile_data + obj * 16 + obj_line * 2);
 		obj_line_b = mem_read_8(tile_data + obj * 16 + obj_line * 2 + 1);
 		for (j = 0; j < 8; j++) {
-			bg_disp[line * 256 + (i * 8 - scroll_x + j) % 256] =
+			bg_disp[line * 256 + (i * 8 - scrollx_reg + j) % 256] =
 				bg_pal[
 				((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
 				((obj_line_b & (1 << (7 - j))) ? 2 : 0)
@@ -192,7 +214,6 @@ void screen_draw_line_bg(uint8_t line) {
 
 void screen_draw_line_win(uint8_t line) {
 	uint16_t win_tile_map, tile_data;
-	uint8_t pos_x, pos_y; // scroll_y can't change during frame !!!
 	uint8_t oam_row, obj_line;
 	uint8_t i, j;
 	uint8_t obj_line_a, obj_line_b;
@@ -200,9 +221,7 @@ void screen_draw_line_win(uint8_t line) {
 	
 	// Window
 	
-	pos_x = mem_read_8(IO_SCROLLX) - 7;
-	pos_y = mem_read_8(IO_SCROLLY);
-	if (pos_y > line || pos_x > SCREEN_SIZE_X) {
+	if (wndposy_reg > line || wndposx_reg > SCREEN_SIZE_X) {
 		return;
 	}
 	switch (mem_bit_test(IO_LCDCONT,
@@ -226,9 +245,9 @@ void screen_draw_line_win(uint8_t line) {
 	}
 	
 	// WIP WIP WIP
-	oam_row = (line - pos_y) / 8;
-	obj_line = (line - pos_y) % 8;
-	for (i = 0; i < (SCREEN_SIZE_X - pos_x + 7) / 8; i++) {
+	oam_row = (line - wndposy_reg) / 8;
+	obj_line = (line - wndposy_reg) % 8;
+	for (i = 0; i < (SCREEN_SIZE_X - wndposx_reg) / 8; i++) {
 		if (tile_data == 0x9000) {
 			obj = (int8_t)mem_read_8(win_tile_map + oam_row * 32 + i);
 		} else {
@@ -237,7 +256,7 @@ void screen_draw_line_win(uint8_t line) {
 		obj_line_a = mem_read_8(tile_data + obj * 16 + obj_line * 2);
 		obj_line_b = mem_read_8(tile_data + obj * 16 + obj_line * 2 + 1);
 		for (j = 0; j < 8; j++) {
-			win_disp[line * 256 + (i * 8 + pos_x + j) % 256] =
+			win_disp[line * 256 + (i * 8 + wndposx_reg + 7 + j) % 256] =
 				((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
 				((obj_line_b & (1 << (7 - j))) ? 2 : 0);
 		}
@@ -360,13 +379,14 @@ void screen_draw_line_obj(uint8_t line) {
 			pal = obj0_pal;
 		}
 		for (j = 0; j < 8; j++) {
-			pos = line * 256 + (objs_line[i]->x + j) % 256;
+			pos = line * 256 + 
+				(objs_line[i]->x + (x_flip ? 7 - j : j)) % 256;
 			color = pal[
 				((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
 				((obj_line_b & (1 << (7 - j))) ? 2 : 0)
 				];
 			if (color < 4) {
-				obj_disp[x_flip ? 7 - pos : pos] = color;
+				obj_disp[pos] = color;
 			}
 		}
 	}

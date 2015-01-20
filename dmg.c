@@ -5,6 +5,7 @@
 #include "memory.h"
 #include "screen.h"
 #include "timer.h"
+#include "keypad.h"
 #include "io_regs.h"
 #include "debugger.h"
 #include "rom.h"
@@ -104,6 +105,7 @@ void dmg_unload_rom() {
 
 void dmg_init() {       	
 	debug_init();
+	timer_init();
 	rom_init();
 	mem_init();
 	cpu_init();
@@ -127,7 +129,7 @@ void dmg_reset() {
 	printf("Not implemented yet\n");
 }
 
-uint32_t dmg_run(uint32_t delta, int *debug_flag, int *debug_pause) {
+uint32_t dmg_run(uint32_t delta, uint8_t *keypad, int *debug_flag, int *debug_pause) {
 	uint32_t clk, cycles;
 	//dmg_emulate_hardware(delta);
 	clk = 0;
@@ -147,6 +149,7 @@ uint32_t dmg_run(uint32_t delta, int *debug_flag, int *debug_pause) {
 		clk += cycles;
 			
 		timer_emulate(cycles);
+		keypad_emulate(keypad);
 		//
 		// If LCD on...!!!
 		if(screen_emulate(cycles)) {

@@ -9,30 +9,19 @@
 // Key mapping
 
 // GameBoy keys
-#define KEY_A SDL_SCANCODE_Z
-#define KEY_B SDL_SCANCODE_X
-#define KEY_UP SDL_SCANCODE_UP
-#define KEY_DOWN SDL_SCANCODE_DOWN
-#define KEY_LEFT SDL_SCANCODE_LEFT
-#define KEY_RRIGHT SDL_SCANCODE_RIGHT
-#define KEY_SELECT SDL_SCANCODE_BACKSPACE
-#define KEY_START SDL_SCANCODE_ENTER
+#define KEY_A SDLK_z
+#define KEY_B SDLK_x
+#define KEY_UP SDLK_UP
+#define KEY_DOWN SDLK_DOWN
+#define KEY_LEFT SDLK_LEFT
+#define KEY_RIGHT SDLK_RIGHT
+#define KEY_SELECT SDLK_BACKSPACE
+#define KEY_START SDLK_RETURN
 
 typedef enum {
 	E_RESET,
 	E_EXIT,
 	E_NOTHING
 } event_t;
-
-typedef enum {
-	KEYPAD_DOWN,
-	KEYPAD_UP,
-	KEYPAD_LEFT,
-	KEYPAD_RIGHT,
-	KEYPAD_START,
-	KEYPAD_SELECT,
-	KEYPAD_B,
-	KEYPAD_A
-} keypad_t;
 
 event_t process_event(SDL_Event *e);

@@ -110,6 +110,7 @@ event_t process_event(SDL_Event *e) {
 				break;
 			}
 		}
+	}
 	return E_NOTHING;
 }
 
@@ -133,7 +134,7 @@ int main_loop(uint32_t delta) {
 		//keyboard_update_keys();
 		// Do sound or whatever
 		// ...
-		elapsed = dmg_run(delta, &debug_flag, &debug_pause);
+		elapsed = dmg_run(delta, keypad, &debug_flag, &debug_pause);
 
 		// Something
 		//randomize(screen_get_fb());
