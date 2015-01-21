@@ -269,8 +269,10 @@ void screen_draw_line_win(uint8_t line) {
 		obj_line_b = mem_read_8(tile_data + obj * 16 + obj_line * 2 + 1);
 		for (j = 0; j < 8; j++) {
 			win_disp[line * 256 + (uint8_t)(i * 8 + wndposx_reg - 7 + j)] =
+				bg_pal[
 				((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
-				((obj_line_b & (1 << (7 - j))) ? 2 : 0);
+				((obj_line_b & (1 << (7 - j))) ? 2 : 0)
+				];
 		}
 	}
 }

@@ -12,8 +12,8 @@ static rom_info_t rom_info;
 static uint8_t *rom;
 static uint8_t *ram;
 
-static uint8_t rom_bank;
-static uint8_t ram_bank;
+static uint8_t rom_bank, max_rom_bank;
+static uint8_t ram_bank, max_ram_bank;
 static uint8_t ram_enable;
 static uint8_t rom_ram_mode;
 
@@ -55,6 +55,8 @@ void rom_load(char *rom_path) {
 	if (rom_read_info()) {
 		exit(1);
 	}
+	max_rom_bank = rom_info.rom_size / 0x4000;
+	max_ram_bank = rom_info.ram_size / 0x2000;
 	ram = malloc(rom_info.ram_size);
 }
 
@@ -261,6 +263,7 @@ void mbc1_write_8(uint16_t addr, uint8_t v) {
 		if (rom_ram_mode == MBC_ROM_MODE) {
 			v &= 0x03;
 			rom_bank = (rom_bank & 0x1F) | (v << 5);
+			rom_bank = rom_bank % max_rom_bank;
 		} else {
 			ram_bank = v & 0x03;
 		}
