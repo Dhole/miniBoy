@@ -19,7 +19,7 @@ static uint8_t rom_ram_mode;
 
 void rom_init() {
 	rom = NULL;
-	rom = NULL;
+	ram = NULL;
 	rom_info.title[0] = 0x00;
 	rom_bank = 0x01;
 	ram_bank = 0x00;
@@ -274,8 +274,12 @@ void mbc1_write_8(uint16_t addr, uint8_t v) {
 		}
 	}
 	if (addr >= 0xA000 && addr < 0xC000) {
-		ram[addr - 0xA000 + 0x2000 * ram_bank] = v;
+		if (ram_enable) {
+			//printf("Writing ram on bank %d\n", ram_bank);
+			ram[addr - 0xA000 + 0x2000 * ram_bank] = v;
+		}
 	}
+	
 }
 
 uint8_t rom_read_8(uint16_t addr) {
@@ -287,10 +291,13 @@ uint8_t rom_read_8(uint16_t addr) {
 		return mbc1_read_8(addr);
 		break;
 	case MBC_2:
+		printf("MBC2 not supported yet\n");
 		break;
 	case MBC_3:
+		printf("MBC3 not supported yet\n");
 		break;
 	case MBC_5:
+		printf("MBC5 not supported yet\n");
 		break;
 	}
 	return 0;
@@ -304,10 +311,13 @@ void rom_write_8(uint16_t addr, uint8_t v){
 		mbc1_write_8(addr, v);
 		break;
 	case MBC_2:
+		printf("MBC2 not supported yet\n");
 		break;
 	case MBC_3:
+		printf("MBC3 not supported yet\n");
 		break;
 	case MBC_5:
+		printf("MBC5 not supported yet\n");
 		break;
 	}
 }

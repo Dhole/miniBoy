@@ -152,7 +152,7 @@ uint32_t dmg_run(uint32_t delta, uint8_t *keypad, int *debug_flag, int *debug_pa
 		keypad_emulate(keypad);
 		//
 		// If LCD on...!!!
-		if(screen_emulate(cycles)) {
+		if (screen_emulate(cycles)) {
 			break;
 		}
 	}

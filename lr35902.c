@@ -1318,6 +1318,7 @@ void cpu_init() {
 
 	ext_cycles = 0;
 	int_count = 0;
+	halted = 0;
 }
 
 uint8_t disas_op(uint16_t off) {
@@ -1390,6 +1391,7 @@ int handle_interrupts() {
 		regs.ime_flag = 0;
 		return 20;
 	} else if (ienable & iflags & MASK_IO_INT_LCDSTAT_Int) {
+		//printf("LCDSTAT interrupt\n");
 		op_push(&regs.PC, NULL);
 		regs.PC = ADDR_INT_LCDSTAT_Int;
 		mem_bit_unset(IO_IFLAGS, MASK_IO_INT_LCDSTAT_Int);
@@ -1435,16 +1437,15 @@ int cpu_step() {
 		}
 	}
 
-	if ((int_cycles = handle_interrupts())) {
-		return int_cycles;
-	}
-
 	if (halted) {
 		if (mem_read_8(IO_IENABLE) & mem_read_8(IO_IFLAGS)) {
 			halted = 0;
 		} else {
 			return 4;
 		}
+	}
+	if ((int_cycles = handle_interrupts())) {
+		return int_cycles;
 	}
 
 	op = mem_read_8(regs.PC);

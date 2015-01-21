@@ -12,7 +12,7 @@
 #define SCREEN_DUR_OAM 80
 #define SCREEN_DUR_OAM_VRAM 172
 #define SCREEN_DUR_HBLANK 204
-#define SCREEN_DUR_LINE 456
+#define SCREEN_DUR_LINE 456 // 80 + 172 + 204
 #define SCREEN_DUR_VBLANK 4560
 
 // Start of each screen state in each line / frame

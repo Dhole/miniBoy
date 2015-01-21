@@ -144,6 +144,7 @@ uint8_t mem_read_io_8(uint16_t addr) {
 	case IO_SCROLLX:
 	case IO_WNDPOSY:
 	case IO_WNDPOSX:
+	case IO_LCDSTAT:
 		return screen_read_8(addr);
 		break;
 	case IO_JOYPAD:
@@ -199,6 +200,7 @@ void mem_write_io_8(uint16_t addr, uint8_t v) {
 	case IO_SCROLLX:
 	case IO_WNDPOSY:
 	case IO_WNDPOSX:
+	case IO_LCDSTAT:
 		screen_write_8(addr, v);
 		break;
 	case IO_JOYPAD:
