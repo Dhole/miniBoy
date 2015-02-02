@@ -134,7 +134,7 @@ void screen_start_frame() {
 	for (j = 0; j < 256; j++) {
 		for (i = 0; i < 256; i++) {
 			// Using value 8 as transparency
-			bg_disp[j * 256 + 1] = 8;
+			bg_disp[j * 256 + 1] = 0;
 			win_disp[j * 256 + i] = 8;
 			obj_disp[j * 256 + i] = 8;
 		}
@@ -265,7 +265,7 @@ void screen_draw_line_win(uint8_t line) {
 	// WIP WIP WIP
 	oam_row = (uint8_t)(line - wndposy_reg) / 8;
 	obj_line = (uint8_t)(line - wndposy_reg) % 8;
-	for (i = 0; i < (SCREEN_SIZE_X - (wndposx_reg - 8)) / 8; i++) {
+	for (i = 0; i < (SCREEN_SIZE_X - (wndposx_reg - 8)) / 8 + 1; i++) {
 		if (tile_data == 0x9000) {
 			obj = (int8_t)mem_read_8(win_tile_map + oam_row * 32 + i);
 		} else {

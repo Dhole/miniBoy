@@ -37,6 +37,7 @@ typedef struct {
 
 const unsigned int max_trace = 0x1000;
 static trace_t call_trace[max_trace];
+//static trace_t call_trace[0x1000];
 static unsigned int call_trace_len;
 static unsigned int call_trace_depth;
 

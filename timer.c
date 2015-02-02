@@ -24,7 +24,7 @@ void timer_write_8(uint16_t addr, uint8_t v) {
 		break;
 	case IO_TIMCONT:
 		timcont_reg = v;
-		switch (timcont_reg & MASK_IO_TIMCONT_clock) {
+		switch (timcont_reg & (MASK_IO_TIMCONT_clock)) {
 		case OPT_Timer_clock_4096:
 			div = CPU_FREQ / 4096;
 			break;

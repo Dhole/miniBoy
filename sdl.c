@@ -76,19 +76,22 @@ void sdl_change_scale(uint8_t s) {
 void sdl_render(uint8_t *fb) {
 	int i, j;
 	SDL_Rect pixel = {0, 0, scale, scale};
-	if(SDL_MUSTLOCK(screen)) {
+	/*if(SDL_MUSTLOCK(screen)) {
                 SDL_LockSurface(screen);
-        }
+        }*/
 	for (i = 0; i < HEIGHT; i++) {
 		pixel.y = i * scale;
 		for (j = 0; j < WIDTH; j++) {
 			pixel.x = j * scale;
+			if (fb[i*WIDTH + j] >= 4) {
+				continue;
+			}
 			SDL_FillRect(screen, &pixel, palette[fb[i*WIDTH + j]]);
 		}
 	}
-	if(SDL_MUSTLOCK(screen)) {
+	/*if(SDL_MUSTLOCK(screen)) {
                 SDL_UnlockSurface(screen);
-        }
+        }*/
 	SDL_UpdateWindowSurface(window);
 }
 
