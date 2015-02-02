@@ -10,7 +10,6 @@ static uint8_t scale;
 static uint32_t palette[NCOLORS + 1];
 static SDL_Window *window = NULL;
 static SDL_Surface *screen = NULL;
-static SDL_Surface *disp = NULL;
 static SDL_Rect stretch_rect;
 
 Uint32 rmask, gmask, bmask, amask;
@@ -50,8 +49,6 @@ int sdl_init(uint8_t s) {
 		return 1;
 	}
 	screen = SDL_GetWindowSurface(window);
-	disp = SDL_CreateRGBSurface(0, WIDTH, HEIGHT, 32,
-				    rmask, gmask, bmask, amask);
 	stretch_rect.x = 0;
 	stretch_rect.y = 0;
 	stretch_rect.w = WIDTH * scale;
@@ -61,8 +58,6 @@ int sdl_init(uint8_t s) {
 }
 
 void sdl_stop() {
-	SDL_FreeSurface(disp);
-	disp = NULL;
 	SDL_FreeSurface(screen);
 	screen = NULL;
 	SDL_DestroyWindow(window);
@@ -80,18 +75,17 @@ void sdl_change_scale(uint8_t s) {
 
 void sdl_render(uint8_t *fb) {
 	int i, j;
-	SDL_Rect pixel = {0, 0, 1, 1};
-	for (i = 0; i < HEIGHT; i++) {
-		pixel.y = i;
-		for (j = 0; j < WIDTH; j++) {
-			pixel.x = j;
-			SDL_FillRect(disp, &pixel, palette[fb[i*WIDTH + j]]);
-		}
-	}
+	SDL_Rect pixel = {0, 0, scale, scale};
 	if(SDL_MUSTLOCK(screen)) {
                 SDL_LockSurface(screen);
         }
-	SDL_BlitScaled(disp, NULL, screen, &stretch_rect);
+	for (i = 0; i < HEIGHT; i++) {
+		pixel.y = i * scale;
+		for (j = 0; j < WIDTH; j++) {
+			pixel.x = j * scale;
+			SDL_FillRect(screen, &pixel, palette[fb[i*WIDTH + j]]);
+		}
+	}
 	if(SDL_MUSTLOCK(screen)) {
                 SDL_UnlockSurface(screen);
         }

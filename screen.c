@@ -129,7 +129,7 @@ void screen_start_frame() {
 	t_vblank = SCREEN_TF_VBLANK;
 
 	//cur_line = SCREEN_LINES - 1;
-	cur_line = 0;
+	cur_line = -1;
 	// Set window and obj layers transparent
 	for (j = 0; j < 256; j++) {
 		for (i = 0; i < 256; i++) {
@@ -436,6 +436,9 @@ int screen_emulate(uint32_t cycles) {
 		reset = 0;
 		return 1;
 	}
+	if (!mem_bit_test(IO_LCDCONT, MASK_IO_LCDCONT_LCD_Display_Enable)) {
+		return 0;
+	}
 
 	t_oam -= cycles;
 	t_oam_vram -= cycles;
@@ -446,6 +449,7 @@ int screen_emulate(uint32_t cycles) {
 	if (t_oam <= 0) {
 		//printf("line: %d\n", cur_line);
 		// update CURLINE REG
+		cur_line = (cur_line + 1);// % SCREEN_LINES;
 		if (cur_line == cmp_line) {
 			bit_set(&lcdstat_reg, MASK_IO_LCDSTAT_Coincidence_Flag);
 			if (bit_test(lcdstat_reg, 
@@ -496,7 +500,6 @@ int screen_emulate(uint32_t cycles) {
 			// draw line
 			screen_draw_line(cur_line);
 		}
-		cur_line = (cur_line + 1) % SCREEN_LINES;
 		t_hblank += SCREEN_DUR_LINE;
 	}
 	// VBLANK mode 1
