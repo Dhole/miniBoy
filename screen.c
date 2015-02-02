@@ -41,12 +41,12 @@ void screen_write_8(uint16_t addr, uint8_t v) {
 		case IO_OBJ0PAL:
 			obj0pal_reg = v;
 			set_pal(obj0_pal, v);
-			obj0_pal[0] = 4; // Color 0 should be transparency
+			obj0_pal[0] = 8; // Color 0 should be transparency
 			break;
 		case IO_OBJ1PAL:
 			obj1pal_reg = v;
 			set_pal(obj1_pal, v);
-			obj1_pal[0] = 4; // Color 0 should be transparency
+			obj1_pal[0] = 8; // Color 0 should be transparency
 			break;
 		case IO_SCROLLY:
 			scrolly_reg = v;
@@ -133,10 +133,10 @@ void screen_start_frame() {
 	// Set window and obj layers transparent
 	for (j = 0; j < 256; j++) {
 		for (i = 0; i < 256; i++) {
-			// Using value 4 as transparency
-			bg_disp[j * 256 + 1] = 4;
-			win_disp[j * 256 + i] = 4;
-			obj_disp[j * 256 + i] = 4;
+			// Using value 8 as transparency
+			bg_disp[j * 256 + 1] = 8;
+			win_disp[j * 256 + i] = 8;
+			obj_disp[j * 256 + i] = 8;
 		}
 	}
 	screen_emulate(0);
@@ -149,15 +149,20 @@ void screen_draw_line_fb(uint8_t line) {
 		fb[line * SCREEN_SIZE_X + i] = bg_disp[line * 256 + i];
 		// Add ordering between win and obj!
 		// check non painted
-		if (win_disp[line * 256 + i] < 4) { 
+		if (win_disp[line * 256 + i] < 8) { 
 			fb[line * SCREEN_SIZE_X + i] = win_disp[line * 256 + i];
 		}
 		// check transparency
 		if (obj_disp[(line + SCREEN_SPRITE_INI_Y) * 256 +
-			     i + SCREEN_SPRITE_INI_X] < 4) { 
+			     i + SCREEN_SPRITE_INI_X] < 8) { 
+			if (fb[line * SCREEN_SIZE_X + i] != 0 && 
+					obj_disp[(line + SCREEN_SPRITE_INI_Y) * 256 +
+					i + SCREEN_SPRITE_INI_X] >= 4) {
+				continue;
+			}
 			fb[line * SCREEN_SIZE_X + i] =
 				obj_disp[(line + SCREEN_SPRITE_INI_Y) * 256 +
-				i + SCREEN_SPRITE_INI_X];
+				i + SCREEN_SPRITE_INI_X] & 0x03;
 		}
 		
 	}
@@ -320,7 +325,7 @@ void screen_draw_line_obj(uint8_t line) {
 	uint16_t addr, pos;
 	uint8_t obj_height, objs_line_len, obj_line;
 	uint8_t obj_line_a, obj_line_b, color;
-	uint8_t x_flip, y_flip;
+	uint8_t x_flip, y_flip, behind;
 	uint8_t *pal;
 	obj_t objs[40];
 	obj_t *objs_line[40];
@@ -392,6 +397,11 @@ void screen_draw_line_obj(uint8_t line) {
 		} else {
 			pal = obj0_pal;
 		}
+		if (objs_line[i]->flags & OPT_OBJ_Flag_priority) {
+			behind = 1;
+		} else {
+			behind = 0;
+		}
 		for (j = 0; j < 8; j++) {
 			pos = line * 256 + 
 				(objs_line[i]->x + (x_flip ? 7 - j : j)) % 256;
@@ -399,8 +409,11 @@ void screen_draw_line_obj(uint8_t line) {
 				((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
 				((obj_line_b & (1 << (7 - j))) ? 2 : 0)
 				];
-			if (color < 4) {
+			if (color < 8) {
 				obj_disp[pos] = color;
+				if (behind) {
+					obj_disp[pos] |= 4;
+				}
 			}
 		}
 	}
