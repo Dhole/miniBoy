@@ -139,6 +139,7 @@ void screen_start_frame() {
 			obj_disp[j * 256 + i] = 4;
 		}
 	}
+	screen_emulate(0);
 
 }
 
@@ -432,12 +433,14 @@ int bit_test(uint8_t v, uint8_t bit) {
 }
 
 int screen_emulate(uint32_t cycles) {
+	// Makes Dr. Mario hang !!!
+	/*if (!mem_bit_test(IO_LCDCONT, MASK_IO_LCDCONT_LCD_Display_Enable)) {
+		reset = 1;
+		return 0;
+	}*/
 	if (reset) {
 		reset = 0;
 		return 1;
-	}
-	if (!mem_bit_test(IO_LCDCONT, MASK_IO_LCDCONT_LCD_Display_Enable)) {
-		return 0;
 	}
 
 	t_oam -= cycles;
