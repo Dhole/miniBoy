@@ -7,7 +7,9 @@
 const uint32_t div_cte = CPU_FREQ / 16384;
 
 static uint32_t cyc_cnt, cyc_div_cnt, div;
-static uint8_t div_reg, tim_reg, timemod_reg, timcont_reg;
+static uint8_t div_reg, timemod_reg, timcont_reg, enable;
+// We need to detect oveflow, so we use 16 bits!
+static uint16_t tim_reg;
 
 void timer_write_8(uint16_t addr, uint8_t v) {
 	switch (addr) {
@@ -36,6 +38,10 @@ void timer_write_8(uint16_t addr, uint8_t v) {
 			div = CPU_FREQ / 16384;
 			break;
 		}
+		if (timcont_reg & MASK_IO_TIMCONT_Start) {
+			cyc_cnt = 0;
+			enable = 1;
+		}
 		break;
 	default:
 		break;
@@ -47,7 +53,7 @@ uint8_t timer_read_8(uint16_t addr) {
 		return div_reg;
 		break;
 	case IO_TIMECNT:
-		return tim_reg;
+		return (uint8_t) tim_reg;
 		break;
 	case IO_TIMEMOD:
 		return timemod_reg;
@@ -64,6 +70,7 @@ uint8_t timer_read_8(uint16_t addr) {
 void timer_init() {
 	cyc_cnt = 0;
 	cyc_div_cnt = 0;
+	enable = 0;
 }
 
 void timer_emulate(uint32_t cycles) {
@@ -71,19 +78,19 @@ void timer_emulate(uint32_t cycles) {
 	cyc_div_cnt += cycles;
 	while (cyc_div_cnt / div_cte > 0) {
 		cyc_div_cnt -= div_cte;
-		div_reg +=1;
+		div_reg += 1;
 	}
 
-	if (!mem_bit_test(timcont_reg, MASK_IO_TIMCONT_Start)) {
+	if (!enable) {
 		return;
-	} 
+	}
 
 	cyc_cnt += cycles;
 	while (cyc_cnt / div > 0) {
 		cyc_cnt -= div;
 
 		tim_reg += 1;
-		if (tim_reg == 0) {
+		if (tim_reg == 0x100) {
 			// Overflow: Interrupt Timer
 			//printf("Timer Overflow\n");
 			mem_bit_set(IO_IFLAGS, MASK_IO_INT_Timer_Overflow);

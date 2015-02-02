@@ -434,10 +434,10 @@ int bit_test(uint8_t v, uint8_t bit) {
 
 int screen_emulate(uint32_t cycles) {
 	// Makes Dr. Mario hang !!!
-	/*if (!mem_bit_test(IO_LCDCONT, MASK_IO_LCDCONT_LCD_Display_Enable)) {
+	if (!mem_bit_test(IO_LCDCONT, MASK_IO_LCDCONT_LCD_Display_Enable)) {
 		reset = 1;
 		return 0;
-	}*/
+	}
 	if (reset) {
 		reset = 0;
 		return 1;
