@@ -54,14 +54,14 @@
 #define IO_DMACONT 0xFF46
 #define IO_IENABLE 0xFFFF
 
-#define MASK_IO_LCDCONT_LCD_Display_Enable             0x01 << 7
-#define MASK_IO_LCDCONT_Window_Tile_Map_Display_Select 0x01 << 6
-#define MASK_IO_LCDCONT_Window_Display_Enable          0x01 << 5
-#define MASK_IO_LCDCONT_BGWindow_Tile_Data_Select      0x01 << 4
-#define MASK_IO_LCDCONT_BG_Tile_Map_Display_Select     0x01 << 3
-#define MASK_IO_LCDCONT_OBJ_Size                       0x01 << 2
-#define MASK_IO_LCDCONT_OBJ_Display_Enable             0x01 << 1
-#define MASK_IO_LCDCONT_BG_Display_Enable              0x01 << 0
+#define MASK_IO_LCDCONT_LCD_Display_Enable             (0x01 << 7)
+#define MASK_IO_LCDCONT_Window_Tile_Map_Display_Select (0x01 << 6)
+#define MASK_IO_LCDCONT_Window_Display_Enable          (0x01 << 5)
+#define MASK_IO_LCDCONT_BGWindow_Tile_Data_Select      (0x01 << 4)
+#define MASK_IO_LCDCONT_BG_Tile_Map_Display_Select     (0x01 << 3)
+#define MASK_IO_LCDCONT_OBJ_Size                       (0x01 << 2)
+#define MASK_IO_LCDCONT_OBJ_Display_Enable             (0x01 << 1)
+#define MASK_IO_LCDCONT_BG_Display_Enable              (0x01 << 0)
 
 // LCDCONT
 #define OPT_Window_Tile_Map_9800_9BFF     0
@@ -74,17 +74,17 @@
 #define OPT_OBJ_Size_8x16                 1
 
 // OBJ
-#define OPT_OBJ_Flag_priority 0x01 << 7
-#define OPT_OBJ_Flag_yflip    0x01 << 6
-#define OPT_OBJ_Flag_xflip    0x01 << 5
-#define OPT_OBJ_Flag_palette  0x01 << 4
+#define OPT_OBJ_Flag_priority (0x01 << 7)
+#define OPT_OBJ_Flag_yflip    (0x01 << 6)
+#define OPT_OBJ_Flag_xflip    (0x01 << 5)
+#define OPT_OBJ_Flag_palette  (0x01 << 4)
 
-#define MASK_IO_LCDSTAT_LYC_LY_Coincidence_Interrupt 0x01 << 6
-#define MASK_IO_LCDSTAT_Mode_2_OAM_Interrupt         0x01 << 5
-#define MASK_IO_LCDSTAT_Mode_1_VBlank_Interrupt      0x01 << 4
-#define MASK_IO_LCDSTAT_Mode_0_HBlank_Interrupt      0x01 << 3
-#define MASK_IO_LCDSTAT_Coincidence_Flag             0x01 << 2
-#define MASK_IO_LCDSTAT_Mode_Flag                   (0x01 << 1) + (0x01 << 0)
+#define MASK_IO_LCDSTAT_LYC_LY_Coincidence_Interrupt (0x01 << 6)
+#define MASK_IO_LCDSTAT_Mode_2_OAM_Interrupt         (0x01 << 5)
+#define MASK_IO_LCDSTAT_Mode_1_VBlank_Interrupt      (0x01 << 4)
+#define MASK_IO_LCDSTAT_Mode_0_HBlank_Interrupt      (0x01 << 3)
+#define MASK_IO_LCDSTAT_Coincidence_Flag             (0x01 << 2)
+#define MASK_IO_LCDSTAT_Mode_Flag                   ((0x01 << 1) + (0x01 << 0))
 
 #define OPT_LYC_neq_LY    0
 #define OPT_LYC_eq_LY     1
@@ -93,27 +93,27 @@
 #define OPT_Mode_OAM      2
 #define OPT_Mode_OAM_VRAM 3
 
-#define MASK_IO_BGRDPAL_Shade_Color_3 (0x01 << 7) + (0x01 << 6)
-#define MASK_IO_BGRDPAL_Shade_Color_2 (0x01 << 5) + (0x01 << 4)
-#define MASK_IO_BGRDPAL_Shade_Color_1 (0x01 << 3) + (0x01 << 2)
-#define MASK_IO_BGRDPAL_Shade_Color_0 (0x01 << 1) + (0x01 << 0)
+#define MASK_IO_BGRDPAL_Shade_Color_3 ((0x01 << 7) + (0x01 << 6))
+#define MASK_IO_BGRDPAL_Shade_Color_2 ((0x01 << 5) + (0x01 << 4))
+#define MASK_IO_BGRDPAL_Shade_Color_1 ((0x01 << 3) + (0x01 << 2))
+#define MASK_IO_BGRDPAL_Shade_Color_0 ((0x01 << 1) + (0x01 << 0))
 
 #define OPT_Color_White      0
 #define OPT_Color_Light_Gray 1
 #define OPT_Color_Dark_Gray  2
 #define OPT_Color_Black      3
 
-#define MASK_IO_INT_High_to_Low_P10_P13    0x01 << 4
-#define MASK_IO_INT_End_Serial_IO_Transfer 0x01 << 3
-#define MASK_IO_INT_Timer_Overflow         0x01 << 2
-#define MASK_IO_INT_LCDSTAT_Int            0x01 << 1
-#define MASK_IO_INT_VBlank                 0x01 << 0
+#define MASK_IO_INT_High_to_Low_P10_P13    (0x01 << 4)
+#define MASK_IO_INT_End_Serial_IO_Transfer (0x01 << 3)
+#define MASK_IO_INT_Timer_Overflow         (0x01 << 2)
+#define MASK_IO_INT_LCDSTAT_Int            (0x01 << 1)
+#define MASK_IO_INT_VBlank                 (0x01 << 0)
 
-#define MASK_IO_SIOCONT_Start_Flag 0x01 << 7
-#define MASK_IO_SIOCONT_IO_Select  0x01 << 0
+#define MASK_IO_SIOCONT_Start_Flag (0x01 << 7)
+#define MASK_IO_SIOCONT_IO_Select  (0x01 << 0)
 
-#define MASK_IO_TIMCONT_Start  0x01 << 2
-#define MASK_IO_TIMCONT_clock (0x01 << 1) + (0x01 << 0)
+#define MASK_IO_TIMCONT_Start  (0x01 << 2)
+#define MASK_IO_TIMCONT_clock ((0x01 << 1) + (0x01 << 0))
 
 #define OPT_Timer_clock_4096   0
 #define OPT_Timer_clock_262144 1

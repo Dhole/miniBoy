@@ -149,13 +149,13 @@ void screen_draw_line_fb(uint8_t line) {
 		fb[line * SCREEN_SIZE_X + i] = bg_disp[line * 256 + i];
 		// Add ordering between win and obj!
 		// check non painted
-		if (win_disp[line * 256 + i] < 8) { 
+		if (win_disp[line * 256 + i] < 8) {
 			fb[line * SCREEN_SIZE_X + i] = win_disp[line * 256 + i];
 		}
 		// check transparency
 		if (obj_disp[(line + SCREEN_SPRITE_INI_Y) * 256 +
-			     i + SCREEN_SPRITE_INI_X] < 8) { 
-			if (fb[line * SCREEN_SIZE_X + i] != 0 && 
+				i + SCREEN_SPRITE_INI_X] < 8) {
+			if (fb[line * SCREEN_SIZE_X + i] != 0 &&
 					obj_disp[(line + SCREEN_SPRITE_INI_Y) * 256 +
 					i + SCREEN_SPRITE_INI_X] >= 4) {
 				continue;
@@ -164,13 +164,13 @@ void screen_draw_line_fb(uint8_t line) {
 				obj_disp[(line + SCREEN_SPRITE_INI_Y) * 256 +
 				i + SCREEN_SPRITE_INI_X] & 0x03;
 		}
-		
+
 	}
 }
 
 void dump_some_layer() {
 	int i, j;
-	// Dump just 1st quarter of screen 
+	// Dump just 1st quarter of screen
 	for (j = 0; j < 64; j++) {
 		for (i = 0; i < 128; i++) {
 			printf("%d", win_disp[j * 256 + i]);
@@ -186,11 +186,11 @@ void screen_draw_line_bg(uint8_t line) {
 	uint8_t i, j;
 	uint8_t obj_line_a, obj_line_b;
 	int16_t obj;
-	
+
 	// Background
-	
+
 	switch (mem_bit_test(IO_LCDCONT,
-			     MASK_IO_LCDCONT_BG_Tile_Map_Display_Select)) {
+		MASK_IO_LCDCONT_BG_Tile_Map_Display_Select)) {
 	case OPT_BG_Tile_Map_9800_9BFF:
 		bg_tile_map = 0x9800;
 		break;
@@ -199,7 +199,7 @@ void screen_draw_line_bg(uint8_t line) {
 		break;
 	}
 	switch (mem_bit_test(IO_LCDCONT,
-			     MASK_IO_LCDCONT_BGWindow_Tile_Data_Select)) {
+		MASK_IO_LCDCONT_BGWindow_Tile_Data_Select)) {
 	case OPT_BGWindow_Tile_Data_8800_97FF:
 		// Some work to do here -> DONE
 		tile_data = 0x9000;
@@ -208,7 +208,7 @@ void screen_draw_line_bg(uint8_t line) {
 		tile_data = 0x8000;
 		break;
 	}
-	
+
 	// WIP WIP WIP
 	oam_row = (uint8_t)(line + scrolly_reg) / 8;
 	obj_line = (uint8_t)(line + scrolly_reg) % 8;
@@ -236,14 +236,14 @@ void screen_draw_line_win(uint8_t line) {
 	uint8_t i, j;
 	uint8_t obj_line_a, obj_line_b;
 	int16_t obj;
-	
+
 	// Window
-	
+
 	if (wndposy_reg > line || wndposx_reg > SCREEN_SIZE_X) {
 		return;
 	}
 	switch (mem_bit_test(IO_LCDCONT,
-			     MASK_IO_LCDCONT_Window_Tile_Map_Display_Select)) {
+		MASK_IO_LCDCONT_Window_Tile_Map_Display_Select)) {
 	case OPT_Window_Tile_Map_9800_9BFF:
 		win_tile_map = 0x9800;
 		break;
@@ -252,7 +252,7 @@ void screen_draw_line_win(uint8_t line) {
 		break;
 	}
 	switch (mem_bit_test(IO_LCDCONT,
-			     MASK_IO_LCDCONT_BGWindow_Tile_Data_Select)) {
+		MASK_IO_LCDCONT_BGWindow_Tile_Data_Select)) {
 	case OPT_BGWindow_Tile_Data_8800_97FF:
 		// Some work to do here -> DONE
 		tile_data = 0x9000;
@@ -261,7 +261,7 @@ void screen_draw_line_win(uint8_t line) {
 		tile_data = 0x8000;
 		break;
 	}
-	
+
 	// WIP WIP WIP
 	oam_row = (uint8_t)(line - wndposy_reg) / 8;
 	obj_line = (uint8_t)(line - wndposy_reg) % 8;
@@ -359,12 +359,12 @@ void screen_draw_line_obj(uint8_t line) {
 	objs_line_len = 0;
 	for (i = 0; i < 40; i++) {
 		if((objs[i].y != 0) && (objs[i].y < SCREEN_SPRITE_END_Y) &&
-		   (objs[i].y <= line) && ((objs[i].y + obj_height) > line)) {
+				(objs[i].y <= line) && ((objs[i].y + obj_height) > line)) {
 			objs_line[objs_line_len++] = &objs[i];
 			/*
 			printf("Object %d:\n", objs[i].id);
 			printf("x: %02X, y: %02X, pat: %02X\n",
-			       objs[i].x, objs[i].y, objs[i].pat);
+				objs[i].x, objs[i].y, objs[i].pat);
 			printf("\n");
 			*/
 			//return;
@@ -388,9 +388,9 @@ void screen_draw_line_obj(uint8_t line) {
 		if (y_flip) {
 			obj_line = obj_height - 1 - obj_line;
 		}
-		obj_line_a = mem_read_8(0x8000 + objs_line[i]->pat * 16 + 
+		obj_line_a = mem_read_8(0x8000 + objs_line[i]->pat * 16 +
 				obj_line * 2);
-		obj_line_b = mem_read_8(0x8000 + objs_line[i]->pat * 16 + 
+		obj_line_b = mem_read_8(0x8000 + objs_line[i]->pat * 16 +
 				obj_line * 2 + 1);
 		if (objs_line[i]->flags & OPT_OBJ_Flag_palette) {
 			pal = obj1_pal;
@@ -403,7 +403,7 @@ void screen_draw_line_obj(uint8_t line) {
 			behind = 0;
 		}
 		for (j = 0; j < 8; j++) {
-			pos = line * 256 + 
+			pos = line * 256 +
 				(objs_line[i]->x + (x_flip ? 7 - j : j)) % 256;
 			color = pal[
 				((obj_line_a & (1 << (7 - j))) ? 1 : 0) +
@@ -468,28 +468,28 @@ int screen_emulate(uint32_t cycles) {
 		cur_line = (cur_line + 1);// % SCREEN_LINES;
 		if (cur_line == cmp_line) {
 			bit_set(&lcdstat_reg, MASK_IO_LCDSTAT_Coincidence_Flag);
-			if (bit_test(lcdstat_reg, 
+			if (bit_test(lcdstat_reg,
 					MASK_IO_LCDSTAT_LYC_LY_Coincidence_Interrupt)) {
 				mem_bit_set(IO_IFLAGS, MASK_IO_INT_LCDSTAT_Int);
 			}
 		} else {
 			bit_unset(&lcdstat_reg, MASK_IO_LCDSTAT_Coincidence_Flag);
 		}
-		
+
 		if (cur_line < SCREEN_SIZE_Y) {
 			lcdstat_reg = (lcdstat_reg & 0xF3) | 0x02;
 			// Set Mode Flag to OAM at LCDSTAT
 			bit_unset(&lcdstat_reg, MASK_IO_LCDSTAT_Mode_Flag);
 			bit_set(&lcdstat_reg, OPT_Mode_OAM);
 			// Interrupt OAM
-			if (bit_test(lcdstat_reg, 
+			if (bit_test(lcdstat_reg,
 					MASK_IO_LCDSTAT_Mode_2_OAM_Interrupt)) {
 				mem_bit_set(IO_IFLAGS, MASK_IO_INT_LCDSTAT_Int);
 			}
 		}
-		
+
 		t_oam += SCREEN_DUR_LINE;
-		
+
 	}
 	// OAM VRAM mode 3
 	if (t_oam_vram <= 0) {
@@ -509,7 +509,7 @@ int screen_emulate(uint32_t cycles) {
 			bit_unset(&lcdstat_reg, MASK_IO_LCDSTAT_Mode_Flag);
 			bit_set(&lcdstat_reg, OPT_Mode_HBlank);
 			// Interrupt HBlank
-			if (bit_test(lcdstat_reg, 
+			if (bit_test(lcdstat_reg,
 					MASK_IO_LCDSTAT_Mode_0_HBlank_Interrupt)) {
 				mem_bit_set(IO_IFLAGS, MASK_IO_INT_LCDSTAT_Int);
 			}
@@ -526,7 +526,7 @@ int screen_emulate(uint32_t cycles) {
 		bit_set(&lcdstat_reg, OPT_Mode_VBlank);
 		// Interrupt VBlank
 		mem_bit_set(IO_IFLAGS, MASK_IO_INT_VBlank);
-		if (bit_test(lcdstat_reg, 
+		if (bit_test(lcdstat_reg,
 				MASK_IO_LCDSTAT_Mode_1_VBlank_Interrupt)) {
 			mem_bit_set(IO_IFLAGS, MASK_IO_INT_LCDSTAT_Int);
 		}

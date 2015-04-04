@@ -89,7 +89,7 @@ void com_disas(int start, int end) {
 	} else if (end == -1) {
 		end = start + 16;
 	}
-	
+
 	while (end > start) {
 		start += disas_op(start);
 	}
@@ -144,7 +144,7 @@ int parse_com(char *buf, command_t *com, int arg_len) {
 	char *pch, *endptr;
 	int *args[2] = {&com->arg_a, &com->arg_b};
 	int i;
-	
+
 	com->name[0] = '\0';
 	com->arg_a = -1;
 	com->arg_b = -1;
@@ -172,14 +172,14 @@ int parse_com(char *buf, command_t *com, int arg_len) {
 			return i;
 		}
 	}
-	return 2;	
+	return 2;
 }
 
 int run_com(command_t *com) {
 	char *name = com->name;
 
 	// TODO: Make this nicer: in a loop?
-	
+
 	if (strncmp(name, "help", ARG_LEN) == 0 || name[0] == 'h') {
 		com_help();
 	} else if (strncmp(name, "step", ARG_LEN) == 0 || name[0] == 's') {
@@ -210,11 +210,11 @@ int run_com(command_t *com) {
 		//printf("memory!\n");
 		mem_dump_io_regs();
 	} else if (strncmp(name, "print", ARG_LEN) == 0 || name[0] == 'p') {
-		printf("[%04X] %02X\n", (uint16_t)com->arg_a, 
+		printf("[%04X] %02X\n", (uint16_t)com->arg_a,
 				mem_read_8((uint16_t)com->arg_a));
 	} else if (strncmp(name, "write", ARG_LEN) == 0 || name[0] == 'w') {
 		mem_write_8((uint16_t)com->arg_a, (uint8_t)com->arg_b);
-		printf("[%04X] %02X\n", (uint16_t)com->arg_a, 
+		printf("[%04X] %02X\n", (uint16_t)com->arg_a,
 				mem_read_8((uint16_t)com->arg_a));
 	} else if (strncmp(name, "quit", ARG_LEN) == 0 || name[0] == 'q') {
 		exit(0);
@@ -232,9 +232,9 @@ int debug_cpu_step() {
 	sp = *(regs->SP);
 	pc = regs->PC;
 	op = mem_read_8(regs->PC);
-	
+
 	cycles = cpu_step();
-	
+
 	if (op == 0xC4 || op == 0xD4 || op == 0xCC || op == 0xDC ||
 	    op == 0xCD) {
 		// CALL op
@@ -251,7 +251,7 @@ int debug_cpu_step() {
 				call_trace_depth += 1;
 			}
 		}
-		
+
 	} else if (op == 0xC0 || op == 0xD0 || op == 0xC8 || op == 0xD8 ||
 		   op == 0xC9 || op == 0xD9) {
 		// RET op
@@ -259,7 +259,7 @@ int debug_cpu_step() {
 			call_trace_depth -= 1;
 		}
 	}
-	
+
 	return cycles;
 }
 
@@ -273,7 +273,7 @@ int debug_run(int *debug_flag, int *debug_pause) {
 		state = DBG_IDLE;
 		*debug_pause = 0;
 	}
-	
+
 	switch(state) {
 	case DBG_IDLE:
 		break;
@@ -311,7 +311,7 @@ int debug_run(int *debug_flag, int *debug_pause) {
 				free(line);
 				continue;
 			}
-		}		
+		}
 		free(line);
 		res = run_com(&com);
 		if (res < 0) {

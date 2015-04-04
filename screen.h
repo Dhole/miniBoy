@@ -23,10 +23,10 @@
 
 #define SCREEN_FPS 59.73
 
-#define MASK_OBJ_PRIORITY 0x01 << 7
-#define MASK_OBJ_Y_FLIP   0x01 << 6
-#define MASK_OBJ_X_FLIP   0x01 << 5
-#define MASK_OBJ_PALETTE  0x01 << 4
+#define MASK_OBJ_PRIORITY (0x01 << 7)
+#define MASK_OBJ_Y_FLIP   (0x01 << 6)
+#define MASK_OBJ_X_FLIP   (0x01 << 5)
+#define MASK_OBJ_PALETTE  (0x01 << 4)
 
 typedef struct {
 	uint8_t id;

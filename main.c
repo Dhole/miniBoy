@@ -33,7 +33,7 @@ event_t process_event(SDL_Event *e) {
 				return E_RESET;
 				break;
 			case KEY_ENTER_DEBUG:
-			        debug_flag = 1;
+				debug_flag = 1;
 				debug_pause = 1;
 				break;
 			case KEY_SCALE_1:
@@ -49,7 +49,7 @@ event_t process_event(SDL_Event *e) {
 				}
 				break;
 			case KEY_EXIT:
-			        return E_EXIT;
+				return E_EXIT;
 				break;
 			// GameBoy Keys
 			case KEY_DOWN:
@@ -152,7 +152,7 @@ int main(int argc, char** argv) {
 
 	pause_emu = 0;
 	scale = 2;
-	
+
 	while ((opt = getopt(argc, argv, "vdb:")) != -1) {
 		switch (opt) {
 		case 'b':
@@ -166,7 +166,7 @@ int main(int argc, char** argv) {
 			debug_pause = 1;
 			break;
 		default:
-		        usage(argv[0]);
+			usage(argv[0]);
 		}
 	}
 	if (optind == argc) {
@@ -178,7 +178,7 @@ int main(int argc, char** argv) {
 
 	dmg_load_bios(bios_path);
 	dmg_load_rom(rom_path);
-	
+
 	sdl_init(scale);
 
 	time = 0;
@@ -186,17 +186,17 @@ int main(int argc, char** argv) {
 	start_time = SDL_GetTicks();
 	for (;;) {
 		delta = ((frame * 1000) / SCREEN_FPS) - time;
-		
+
 		if ((elapsed = main_loop(delta)) == -1) {
 			break;
 		}
 		time += elapsed;
-		
+
 		if (elapsed > 0) {
 			sdl_render(screen_get_fb());
 		}
-		
-	        // Sync to maximum fps
+
+		// Sync to maximum fps
 		if (SDL_GetTicks() - start_time < time)  {
 			SDL_Delay(time - (SDL_GetTicks() - start_time));
 		} else {
