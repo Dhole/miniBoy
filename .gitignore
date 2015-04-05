@@ -1,0 +1,15 @@
+roms
+bgb
+*.o
+*~
+.directory
+tags
+miniBoy
+gbdk
+docs
+dump*
+*.taghl
+test
+daa_test
+core
+*.gch

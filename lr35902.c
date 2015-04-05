@@ -221,7 +221,7 @@ void op_ldhl(void *_a, void *_b) {
 
 	set_flag(H_FLAG, ((*a & 0x0F) > (0x0F - (*b_tmp & 0x0F))) ? 1 : 0);
 	set_flag(C_FLAG, ((*a & 0xFF) > (0xFF - *b_tmp)) ? 1 : 0);
-	
+
 	*regs.HL = *a + *b;
 
 	set_flag(Z_FLAG, 0);
@@ -230,7 +230,6 @@ void op_ldhl(void *_a, void *_b) {
 
 void op_halt(void *_a, void *_b) {
 	halted = 1;
-	regs.ime_flag = 1;
 }
 
 void op_add_8(void *_a, void *_b) {
@@ -265,7 +264,7 @@ void op_addsp(void *_a, void *_b) {
 
 	set_flag(H_FLAG, ((*a & 0x0F) > (0x0F - (*b_tmp & 0x0F))) ? 1 : 0);
 	set_flag(C_FLAG, ((*a & 0xFF) > (0xFF - *b_tmp)) ? 1 : 0);
-        
+
         *a += *b;
 
 	set_flag(Z_FLAG, 0);
